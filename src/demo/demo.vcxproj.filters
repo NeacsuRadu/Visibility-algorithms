@@ -33,6 +33,9 @@
     <ClCompile Include="index_buffer.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="algorithms.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vertex_buffer_layout.h">
@@ -48,6 +51,15 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="index_buffer.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithms.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="geometry.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="circular_list.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>

@@ -150,6 +150,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="algorithms.cpp" />
     <ClCompile Include="index_buffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="shader_program.cpp" />
@@ -157,6 +158,9 @@
     <ClCompile Include="vertex_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="algorithms.h" />
+    <ClInclude Include="circular_list.h" />
+    <ClInclude Include="geometry.h" />
     <ClInclude Include="index_buffer.h" />
     <ClInclude Include="shader_program.h" />
     <ClInclude Include="vertex_array.h" />

@@ -1,6 +1,7 @@
 #include "algorithms.h"
 #include "geometry.h"
 #include "circular_list.h"
+#include "triangulation.h"
 
 #include <stack>
 #include <iostream>
@@ -65,13 +66,6 @@ void simple_polygon_preprocessing(std::vector<point>& points, const point& origi
     for (std::size_t idx = 0; idx < idx_min; ++idx)
         aux.push_back(points[idx]);
     points.swap(aux);
-}
-
-int index(int idx, int size)
-{
-    if (idx >= 0)
-        return idx % size;
-    return size + (idx % size);
 }
 
 std::vector<float> get_simple_polygon_visibility(const std::vector<float>& points, float px, float py)
@@ -231,5 +225,34 @@ std::vector<float> get_simple_polygon_visibility(const std::vector<float>& point
         result.push_back(st.top().pt.y);
         st.pop();
     }
+    return result;
+}
+
+std::vector<float> get_triangulation(const std::vector<float>& points)
+{
+    
+    std::vector<point> vertices;
+    for (auto it = points.begin(); it != points.end(); ++it)
+    {   
+        float x = *it;
+        float y = *(++it);
+        vertices.push_back({x, y});
+    }
+
+    if (!is_counter_clockwise(vertices))
+        to_counter_clockwise(vertices);
+
+    auto triangles = get_triangulation(vertices);
+    std::vector<float> result;
+    for (auto& tri: triangles)
+    {
+        result.push_back(tri->e1->a.x);
+        result.push_back(tri->e1->a.y);
+        result.push_back(tri->e1->b.x);
+        result.push_back(tri->e1->b.y);
+        result.push_back(tri->e2->b.x);
+        result.push_back(tri->e2->b.y);
+    }
+
     return result;
 }

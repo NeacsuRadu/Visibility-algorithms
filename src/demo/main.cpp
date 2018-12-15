@@ -6,6 +6,8 @@
 #include "vertex_buffer_layout.h"
 #include "index_buffer.h"
 #include "algorithms.h"
+#include "circular_list.h"
+#include "triangulation.h"
 
 #include <iostream>
 #include <vector>
@@ -19,7 +21,11 @@ std::vector<unsigned int> indices;
 std::vector<float>        vertices_visi;
 std::vector<unsigned int> indices_visi;
 
+std::vector<float>        vertices_triangualtion;
+
 bool space_pressed = false;
+
+bool triangulation = true;
 
 void cursor_pos_to_xoy(double width, double height, double& x, double& y)
 {
@@ -40,11 +46,18 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
     double mouse_x, mouse_y;
     glfwGetCursorPos(window, &mouse_x, &mouse_y);
     cursor_pos_to_xoy(WINDOW_WIDTH, WINDOW_HEIGHT, mouse_x, mouse_y);
-    if (space_pressed)
+    if (space_pressed && !triangulation)
     {
         vertices_visi.clear();
         indices_visi.clear();
-        vertices_visi = get_simple_polygon_visibility(vertices, mouse_x, mouse_y);
+        try
+        {
+            vertices_visi = get_simple_polygon_visibility(vertices, mouse_x, mouse_y);
+        }
+        catch(const std::runtime_error& er)
+        {
+            std::cout << er.what() << std::endl;
+        }
         if (vertices_visi.size() > 1)
         {
             vertices_visi.push_back(mouse_x);
@@ -62,7 +75,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             indices_visi.push_back(vertices_visi.size()/2 - 1);
         }
     }
-    else
+    else if (!space_pressed)
     {
         vertices.push_back(mouse_x);
         vertices.push_back(mouse_y);
@@ -86,6 +99,18 @@ void handle_input(GLFWwindow * window)
         space_pressed = true;
         indices.push_back(0);
         indices.push_back(vertices.size() / 2 - 1);
+        if (triangulation)
+        {
+            vertices_triangualtion = get_triangulation(vertices);
+        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    {
+        space_pressed = false;
+        indices.clear();
+        vertices.clear();
+        indices_visi.clear();
+        vertices_visi.clear();
     }
 }
 
@@ -96,8 +121,11 @@ void framebuffer_size_callback(GLFWwindow *, int width, int height)
     glViewport(0, 0, width, height);
 }
 
+int test();
 int main(void)
 {
+    //return test();
+    
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -150,6 +178,12 @@ int main(void)
     index_buffer ib_visi;
     va_visi.add_buffer(vb_visi, layout);
 
+    vertex_array va_triangulation;
+    vertex_buffer vb_triangulation;
+    va_triangulation.add_buffer(vb_triangulation, layout);
+
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -188,13 +222,26 @@ int main(void)
         /* Draw visibility is possible */
         if (space_pressed && vertices_visi.size() > 1)
         {
+            if (!triangulation)
+            {
+                program.use();
+                va_visi.bind();
+                ib_visi.bind();
+                ib_visi.buffer_data(indices_visi.data(), indices_visi.size());
+                vb_visi.bind();
+                vb_visi.buffer_data(vertices_visi.data(), sizeof(float) * vertices_visi.size());
+                glDrawElements(GL_TRIANGLES, indices_visi.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
+            }
+        }
+
+        /* Draw triangles */
+        if (triangulation) 
+        {
             program.use();
-            va_visi.bind();
-            ib_visi.bind();
-            ib_visi.buffer_data(indices_visi.data(), indices_visi.size());
-            vb_visi.bind();
-            vb_visi.buffer_data(vertices_visi.data(), sizeof(float) * vertices_visi.size());
-            glDrawElements(GL_TRIANGLES, indices_visi.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
+            va_triangulation.bind();
+            vb_triangulation.bind();
+            vb_triangulation.buffer_data(vertices_triangualtion.data(), sizeof(float) * vertices_triangualtion.size());
+            glDrawArrays(GL_TRIANGLES, 0, vertices_triangualtion.size() / 2);
         }
 
         /* Swap front and back buffers */
@@ -205,5 +252,56 @@ int main(void)
     }
 
     glfwTerminate();
+    return 0;
+}
+
+void afisare(const triangle * tr, bool dual = true)
+{
+    if (!tr)
+    {
+        std::cout << "tr is null" << std::endl;
+        return;
+    }
+
+    std::cout << tr->e1->a.x << " " << tr->e1->a.y << " " << tr->e1->b.x << " " << tr->e1->b.y << " : "
+              << tr->e2->a.x << " " << tr->e2->a.y << " " << tr->e2->b.x << " " << tr->e2->b.y << " : "
+              << tr->e3->a.x << " " << tr->e3->a.y << " " << tr->e3->b.x << " " << tr->e3->b.y << std::endl; 
+
+    if (!dual)
+       return;
+
+    std::cout << "e1: ";
+    if (tr->e1->dual)
+        afisare(tr->e1->dual->tri, false);
+    std::cout << std::endl << "e2: ";
+    if (tr->e2->dual)
+        afisare(tr->e2->dual->tri, false);
+    std::cout << std::endl << "e3: ";
+    if (tr->e3->dual)
+        afisare(tr->e3->dual->tri, false);
+    std::cout << std::endl;
+}
+
+int test()
+{
+    std::vector<point> points = {
+        {1.0, 2.0},
+        {0.0, 1.0},
+        {-1.0, 2.0},
+        {-2.0, 2.0},
+        {-1.0, 0.0},
+        {-1.0, -1.0},
+        {1.0, -1.0}
+    };
+
+    auto triangles = get_triangulation(points);
+    std::cout << triangles.size() << std::endl;
+
+    for (auto& tr: triangles)
+    {
+        afisare(tr);
+        std::cout << std::endl;
+    }
+
     return 0;
 }

@@ -50,6 +50,20 @@ public:
         first->prev = aux;
     }
 
+    node<type> * remove(node<type> * node)
+    {
+        node->prev->next = node->next;
+        node->next->prev = node->prev;
+        auto ret = node->next;
+        if (node == first)
+            first = node->next;
+
+        node->prev = node->next = nullptr;
+        delete node;
+
+        return ret;
+    }
+
     void destroy()
     {
         if (!first)

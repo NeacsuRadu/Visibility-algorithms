@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <iostream>
+#include <vector>
 enum class orientation: int
 {
     right = -1,
@@ -8,10 +9,35 @@ enum class orientation: int
     left
 };
 
+inline int index(int idx, int size)
+{
+    if (idx >= 0)
+        return idx % size;
+    return size + (idx % size);
+}
+
 struct point
 {
     double x = 0.0;
     double y = 0.0;
+};
+
+struct triangle;
+
+struct edge
+{
+    point a;
+    point b;
+
+    edge     * dual = nullptr;
+    triangle * tri = nullptr;
+};
+
+struct triangle
+{
+    edge * e1 = nullptr;
+    edge * e2 = nullptr;
+    edge * e3 = nullptr;
 };
 
 static point error_point = {-9999.999999, -9999.99999};
@@ -23,6 +49,16 @@ inline bool operator == (const point& p, const point& q)
 inline bool operator != (const point& p, const point& q)
 {
     return !(p == q);
+}
+
+inline bool operator == (const edge& e1, const edge& e2)
+{
+    return e1.a == e2.a && e1.b == e2.b;
+}
+
+inline bool operator != (const edge& e1, const edge& e2)
+{
+    return !(e1 == e2);
 }
 
 struct vertex 
@@ -114,6 +150,14 @@ inline point get_segments_intersection(const point& p1, const point& p2, const p
         point_between_segment_vertices(intersection, q1, q2))
         return intersection;
     return error_point;
+}
+
+inline bool point_in_triangle(const point& t1, const point& t2, const point& t3, const point& point)
+{
+    // counter clockwise order 
+    return test_orientation(t1, t2, point) == orientation::left &&
+           test_orientation(t2, t3, point) == orientation::left &&
+           test_orientation(t3, t1, point) == orientation::left;
 }
 
 inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)

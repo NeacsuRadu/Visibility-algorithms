@@ -6,22 +6,29 @@
 #include "vertex_buffer_layout.h"
 #include "index_buffer.h"
 #include "algorithms.h"
-#include "circular_list.h"
-#include "triangulation.h"
 
 #include <iostream>
 #include <vector>
-
+;
 unsigned int WINDOW_WIDTH  = 640;
 unsigned int WINDOW_HEIGHT = 480;
 
+bool visi_enabled = false;
+bool last_space_state = false;
+
 std::vector<float>        vertices;
 std::vector<unsigned int> indices;
+unsigned int poly_starting_index = 0;
+
+std::vector<std::vector<point>> polygons;
+unsigned int polygon_index;
 
 std::vector<float>        vertices_visi;
 std::vector<unsigned int> indices_visi;
 
 std::vector<float>        vertices_triangualtion;
+std::vector<float>        vertices_triangle;
+
 
 bool space_pressed = false;
 
@@ -46,47 +53,41 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
     double mouse_x, mouse_y;
     glfwGetCursorPos(window, &mouse_x, &mouse_y);
     cursor_pos_to_xoy(WINDOW_WIDTH, WINDOW_HEIGHT, mouse_x, mouse_y);
-    if (space_pressed && !triangulation)
+    if (visi_enabled)
     {
         vertices_visi.clear();
         indices_visi.clear();
         try
         {
-            vertices_visi = get_simple_polygon_visibility(vertices, mouse_x, mouse_y);
+            vertices_visi = get_polygon_visibility(vertices, mouse_x, mouse_y);
         }
         catch(const std::runtime_error& er)
         {
             std::cout << er.what() << std::endl;
         }
-        if (vertices_visi.size() > 1)
-        {
-            vertices_visi.push_back(mouse_x);
-            vertices_visi.push_back(mouse_y);
-
-
-            for (unsigned int idx = 0; idx < vertices_visi.size()/2 -2; ++idx)
-            {
-                indices_visi.push_back(idx);
-                indices_visi.push_back(idx + 1);
-                indices_visi.push_back(vertices_visi.size()/2 - 1);
-            }
-            indices_visi.push_back(0);
-            indices_visi.push_back(vertices_visi.size()/2 - 2);
-            indices_visi.push_back(vertices_visi.size()/2 - 1);
-        }
     }
-    else if (!space_pressed)
+    else 
     {
+        polygons[polygon_index].push_back({mouse_x, mouse_y});
+
+        if (vertices.size() - poly_starting_index > 2) 
+        {
+            float last_x = vertices[vertices.size() - 2];
+            float last_y = vertices[vertices.size() - 1];
+            vertices.push_back(last_x);
+            vertices.push_back(last_y);
+        }
         vertices.push_back(mouse_x);
         vertices.push_back(mouse_y);
 
-        if (vertices.size() == 2 || vertices.size() == 4)
+        /*if (vertices.size() == 2 || vertices.size() == 4)
             indices.push_back(vertices.size() / 2 - 1);
         else if (vertices.size() > 4)
         {
             indices.push_back(vertices.size() / 2 - 2);
             indices.push_back(vertices.size() / 2 - 1);
-        }
+        }*/
+        
     }
 }
 
@@ -125,7 +126,8 @@ int test();
 int main(void)
 {
     //return test();
-    
+    polygons.push_back({});
+
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -182,8 +184,10 @@ int main(void)
     vertex_buffer vb_triangulation;
     va_triangulation.add_buffer(vb_triangulation, layout);
 
+    vertex_array va_tri;
+    vertex_buffer vb_tri;
+    va_tri.add_buffer(vb_tri, layout);
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -212,36 +216,46 @@ int main(void)
         else if (vertices.size() > 2)
         {
             va_points.bind();
-            ib_points.bind();
-            ib_points.buffer_data(indices.data(), indices.size());
+            /*ib_points.bind();
+            ib_points.buffer_data(indices.data(), indices.size());*/
             vb_points.bind();
             vb_points.buffer_data(vertices.data(), sizeof(float) * vertices.size());
-            glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
+            //glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
+            glDrawArrays(GL_LINES, 0, vertices.size() / 2);
         }
 
         /* Draw visibility is possible */
         if (space_pressed && vertices_visi.size() > 1)
         {
-            if (!triangulation)
-            {
-                program.use();
-                va_visi.bind();
-                ib_visi.bind();
-                ib_visi.buffer_data(indices_visi.data(), indices_visi.size());
-                vb_visi.bind();
-                vb_visi.buffer_data(vertices_visi.data(), sizeof(float) * vertices_visi.size());
-                glDrawElements(GL_TRIANGLES, indices_visi.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
-            }
+            program.use();
+            va_visi.bind();
+            /*ib_visi.bind();
+            ib_visi.buffer_data(indices_visi.data(), indices_visi.size());*/
+            vb_visi.bind();
+            vb_visi.buffer_data(vertices_visi.data(), sizeof(float) * vertices_visi.size());
+            //glDrawElements(GL_TRIANGLES, indices_visi.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
+            glDrawArrays(GL_TRIANGLES, 0, vertices_visi.size() / 2);
         }
 
         /* Draw triangles */
-        if (triangulation) 
+        if (triangulation)
         {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             program.use();
             va_triangulation.bind();
             vb_triangulation.bind();
             vb_triangulation.buffer_data(vertices_triangualtion.data(), sizeof(float) * vertices_triangualtion.size());
             glDrawArrays(GL_TRIANGLES, 0, vertices_triangualtion.size() / 2);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+        
+        if (vertices_triangle.size() > 0)
+        {
+            program.use();
+            va_tri.bind();
+            vb_tri.bind();
+            vb_tri.buffer_data(vertices_triangle.data(), sizeof(float) * vertices_triangle.size());
+            glDrawArrays(GL_TRIANGLES, 0, vertices_triangle.size() / 2);
         }
 
         /* Swap front and back buffers */
@@ -284,7 +298,7 @@ void afisare(const triangle * tr, bool dual = true)
 
 int test()
 {
-    std::vector<point> points = {
+    /*std::vector<point> points = {
         {1.0, 2.0},
         {0.0, 1.0},
         {-1.0, 2.0},
@@ -301,7 +315,7 @@ int test()
     {
         afisare(tr);
         std::cout << std::endl;
-    }
+    }*/
 
     return 0;
 }

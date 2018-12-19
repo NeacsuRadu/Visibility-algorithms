@@ -153,16 +153,19 @@
     <ClCompile Include="algorithms.cpp" />
     <ClCompile Include="index_buffer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="polygon_visibility.cpp" />
     <ClCompile Include="shader_program.cpp" />
     <ClCompile Include="triangulation.cpp" />
     <ClCompile Include="vertex_array.cpp" />
     <ClCompile Include="vertex_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="algorithm.h" />
     <ClInclude Include="algorithms.h" />
     <ClInclude Include="circular_list.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="index_buffer.h" />
+    <ClInclude Include="polygon_visibility.h" />
     <ClInclude Include="shader_program.h" />
     <ClInclude Include="triangulation.h" />
     <ClInclude Include="vertex_array.h" />

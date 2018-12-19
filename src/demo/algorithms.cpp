@@ -1,6 +1,5 @@
 #include "algorithms.h"
 #include "geometry.h"
-#include "circular_list.h"
 #include "triangulation.h"
 
 #include <stack>
@@ -228,6 +227,7 @@ std::vector<float> get_simple_polygon_visibility(const std::vector<float>& point
     return result;
 }
 
+std::vector<triangle*> triangles;
 std::vector<float> get_triangulation(const std::vector<float>& points)
 {
     
@@ -242,7 +242,7 @@ std::vector<float> get_triangulation(const std::vector<float>& points)
     if (!is_counter_clockwise(vertices))
         to_counter_clockwise(vertices);
 
-    auto triangles = get_triangulation(vertices);
+    triangles = get_triangulation(vertices);
     std::vector<float> result;
     for (auto& tri: triangles)
     {
@@ -255,4 +255,214 @@ std::vector<float> get_triangulation(const std::vector<float>& points)
     }
 
     return result;
+}
+
+std::vector<triangle*> get_triangles(float mouse_x, float mouse_y, position& pos)
+{
+    std::vector<triangle*> result;
+    for (auto& it : triangles)
+    {
+        if (point_in_triangle(it->e1->a, it->e1->b, it->e2->b, {mouse_x, mouse_y}))
+        {
+            result.push_back(it);
+            pos = position::interior;
+            break;
+        }
+        else if (point_on_triangle(it->e1->a, it->e1->b, it->e2->b, {mouse_x, mouse_y}))
+        {
+            result.push_back(it);
+            pos = position::line;
+        }
+        else if (point_is_triangle_vertex(it->e1->a, it->e1->b, it->e2->b, {mouse_x, mouse_y}))
+        {
+            result.push_back(it);
+            pos = position::point;
+        }
+    }
+    return result;
+}
+
+void get_visibility(const point& q, const point& left, const point& right, const edge * e, std::vector<triangle*>& visibility)
+{
+    std::cout << "get visibility" << std::endl;
+    // preprocessing of the edges, find through what edge we are looking into tri
+    edge * e1 = nullptr;
+    edge * e2 = nullptr;
+    if (e == e->tri->e1)
+    {
+        e1 = e->tri->e2;
+        e2 = e->tri->e3;
+    }
+    else if (e == e->tri->e2)
+    {
+        e1 = e->tri->e3;
+        e2 = e->tri->e1;
+    }
+    else // e == tri->e3
+    {
+        e1 = e->tri->e1;
+        e2 = e->tri->e2;
+    }
+
+    point p = e1->b;
+    if (test_orientation(q, right, p) != orientation::left)
+    {
+        std::cout << "p is to the right of q - r" << std::endl;
+        auto int_right = get_lines_intersection(q, right, e2->a, e2->b);
+        if (e2->dual)
+            get_visibility(q, left, int_right, e2->dual, visibility);
+        else
+        {
+            std::cout << "e2 does not have dual" << std::endl;
+            auto int_left = get_lines_intersection(q, left, e2->a, e2->b);
+            visibility.push_back(get_triangle(q, int_left, int_right));
+        }
+    }
+    else if (test_orientation(q, left, p) == orientation::right)
+    {
+        std::cout << "p is between q - r and q - l" << std::endl;
+        if (e1->dual)
+            get_visibility(q, e1->b, right, e1->dual, visibility);
+        else
+        {
+            std::cout << "e1 does not have dual" << std::endl;
+            auto intersection = get_lines_intersection(q, right, e1->a, e1->b);
+            visibility.push_back(get_triangle(q, e1->b, intersection));
+        }
+        
+        if (e2->dual)
+            get_visibility(q, left, e2->a, e2->dual, visibility);
+        else
+        {
+            std::cout << "e2 does not have dual" << std::endl;
+            auto intersection = get_lines_intersection(q, left, e2->a, e2->b);
+            visibility.push_back(get_triangle(q, intersection, e2->a));
+        }
+    }
+    else // test_orientation(q, left, p) != orientation::right
+    {
+        std::cout << "p is to the left of q - l" << std::endl;
+        auto int_left = get_lines_intersection(q, left, e1->a, e1->b);
+
+        if (e1->dual)
+            get_visibility(q, int_left, right, e1->dual, visibility);
+        else
+        {
+            std::cout << "e1 does not have dual" << std::endl;
+            auto int_right = get_lines_intersection(q, right, e1->a, e1->b);
+            visibility.push_back(get_triangle(q, int_left, int_right));
+        }
+    }
+}
+
+void get_visibility_from_line(const std::vector<triangle*> tri, const point& q, std::vector<triangle*>& visibility)
+{
+    std::cout << "visi from line" << std::endl;
+    for (auto& t : tri)
+    {
+        edge * e1 = nullptr;
+        edge * e2 = nullptr;
+        if (test_orientation(t->e1->a, t->e1->b, q) == orientation::collinear)
+        {
+            e1 = t->e2;
+            e2 = t->e3;
+        }
+        else if (test_orientation(t->e2->a, t->e2->b, q) == orientation::collinear)
+        {
+            e1 = t->e3;
+            e2 = t->e1;
+        }
+        else
+        {
+            e1 = t->e1;
+            e2 = t->e2;
+        }
+
+        if (e1->dual)
+            get_visibility(q, e1->b, e1->a, e1->dual, visibility);
+        else 
+            visibility.push_back(get_triangle(q, e1->a, e1->b));
+
+        if (e2->dual)
+            get_visibility(q, e2->b, e2->a, e2->dual, visibility);
+        else 
+            visibility.push_back(get_triangle(q, e2->a, e2->b));
+    }
+}
+
+void get_visibility_from_vertex(const std::vector<triangle*> tri, const point& q, std::vector<triangle*>& visibility)
+{
+    for (auto& t : tri)
+    {
+        edge * e = nullptr;
+        if (q == t->e1->a)
+            e = t->e2;
+        else if (q == t->e1->b)
+            e = t->e3;
+        else // q == t->e2->b
+            e = t->e1;
+
+        if (e->dual)
+            get_visibility(q, e->b, e->a, e->dual, visibility);
+        else 
+            visibility.push_back(get_triangle(q, e->a, e->b));
+    }
+}
+
+std::vector<triangle*> get_polygon_visibility_triangles(const std::vector<float>& points, float px, float py)
+{
+    std::cout << "Get polygon visibility" << std::endl;
+    if (triangles.size() == 0)
+        get_triangulation(points);
+
+    position pos;
+    auto tri = get_triangles(px, py, pos);
+    if (tri.size() == 0)
+        return {};
+
+    std::cout << "Valid triangle" << std::endl;
+
+    point q {px, py};
+    std::vector<triangle*> visibility;
+    if (pos == position::interior)
+    {
+        if (tri[0]->e1->dual)
+            get_visibility(q, tri[0]->e1->b, tri[0]->e1->a, tri[0]->e1->dual, visibility);
+        else 
+            visibility.push_back(get_triangle(q, tri[0]->e1->a, tri[0]->e1->b));
+
+        if (tri[0]->e2->dual)
+            get_visibility(q, tri[0]->e2->b, tri[0]->e2->a, tri[0]->e2->dual, visibility);
+        else
+            visibility.push_back(get_triangle(q, tri[0]->e2->a, tri[0]->e2->b));
+
+
+        if (tri[0]->e3->dual)
+            get_visibility(q, tri[0]->e3->b, tri[0]->e3->a, tri[0]->e3->dual, visibility);
+        else
+            visibility.push_back(get_triangle(q, tri[0]->e3->a, tri[0]->e3->b));
+    }
+    else if(pos == position::line)
+        get_visibility_from_line(tri, q, visibility);
+    else 
+        get_visibility_from_vertex(tri, q, visibility);
+
+    std::cout << "size :" << visibility.size() << std::endl;
+    return visibility;
+}
+
+std::vector<float> get_polygon_visibility(const std::vector<float>& points, float px, float py)
+{
+    auto triangles = get_polygon_visibility_triangles(points, px, py);
+    std::vector<float> res;
+    for (auto t : triangles)
+    {
+        res.push_back(t->e1->a.x);
+        res.push_back(t->e1->a.y);
+        res.push_back(t->e1->b.x);
+        res.push_back(t->e1->b.y);
+        res.push_back(t->e2->b.x);
+        res.push_back(t->e2->b.y);
+    }
+    return res;
 }

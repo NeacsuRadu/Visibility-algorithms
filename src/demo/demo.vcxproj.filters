@@ -39,6 +39,9 @@
     <ClCompile Include="triangulation.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="polygon_visibility.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vertex_buffer_layout.h">
@@ -66,6 +69,12 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="triangulation.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="polygon_visibility.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>

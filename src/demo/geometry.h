@@ -9,6 +9,13 @@ enum class orientation: int
     left
 };
 
+enum class position: unsigned int
+{
+    interior,
+    line,
+    point
+};
+
 inline int index(int idx, int size)
 {
     if (idx >= 0)
@@ -39,6 +46,28 @@ struct triangle
     edge * e2 = nullptr;
     edge * e3 = nullptr;
 };
+
+inline triangle * get_triangle(const point& a, const point& b, const point& c)
+{
+    edge * e1 = new edge();
+    e1->a = a;
+    e1->b = b;
+    
+    edge * e2 = new edge();
+    e2->a = b;
+    e2->b = c;
+
+    edge * e3 = new edge();
+    e3->a = c;
+    e3->b = a;
+
+    triangle * tri = new triangle;
+    tri->e1 = e1;
+    tri->e2 = e2;
+    tri->e3 = e3;
+
+    return tri;
+}
 
 static point error_point = {-9999.999999, -9999.99999};
 inline bool operator == (const point& p, const point& q)
@@ -150,6 +179,22 @@ inline point get_segments_intersection(const point& p1, const point& p2, const p
         point_between_segment_vertices(intersection, q1, q2))
         return intersection;
     return error_point;
+}
+
+inline bool point_is_triangle_vertex(const point& t1, const point& t2, const point& t3, const point& point)
+{
+    return t1 == point || t2 == point || t3 == point; 
+}
+
+inline bool point_on_triangle(const point& t1, const point& t2, const point& t3, const point& point)
+{
+    int aux = static_cast<int>(test_orientation(t1, t2, point)) + 
+              static_cast<int>(test_orientation(t2, t3, point)) + 
+              static_cast<int>(test_orientation(t3, t1, point));
+    return test_orientation(t1, t2, point) != orientation::right &&
+           test_orientation(t2, t3, point) != orientation::right &&
+           test_orientation(t3, t1, point) != orientation::right &&
+           aux  == 2;
 }
 
 inline bool point_in_triangle(const point& t1, const point& t2, const point& t3, const point& point)

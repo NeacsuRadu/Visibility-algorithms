@@ -27,6 +27,7 @@ struct point
 {
     double x = 0.0;
     double y = 0.0;
+    bool is_dup = false;
 };
 
 struct triangle;

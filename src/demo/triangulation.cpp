@@ -54,6 +54,30 @@ std::vector<triangle*> get_triangulation(const std::vector<point>& points)
     for (auto it: aux)
         list.push_back(it);
 
+    auto list_it = list.get_first();
+    while (list_it->next != list.get_first())
+    {
+        std::cout << "here" << std::endl;
+        if (list_it->info.coords.is_dup && 
+            list_it->info.next->dual == nullptr)
+        {
+            std::cout << "found one" << std::endl;
+            auto search_it = list_it->next;
+            while (true)
+            {
+                if (search_it->info.coords.is_dup && 
+                    search_it->next->info.coords == list_it->info.coords)
+                    break;
+                search_it = search_it->next;
+            }
+            std::cout << list_it->info.next->a.x << " " << list_it->info.next->a.y << "  " << list_it->info.next->b.x << " " << list_it->info.next->b.y << std::endl;
+            std::cout << search_it->info.next->a.x << " " << search_it->info.next->a.y << "  " << search_it->info.next->b.x << " " << search_it->info.next->b.y << std::endl;
+            list_it->info.next->dual = search_it->info.next;
+            search_it->info.next->dual = list_it->info.next;
+        }
+        list_it = list_it->next;
+    }
+
     int no_of_triangles = size - 3;
     node<boundary_point> * it = list.get_first();
     std::vector<triangle*> triangles;

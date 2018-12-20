@@ -59,7 +59,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         indices_visi.clear();
         try
         {
-            vertices_visi = get_polygon_visibility(vertices, mouse_x, mouse_y);
+            vertices_visi = get_polygon_visibility(polygons, mouse_x, mouse_y);
         }
         catch(const std::runtime_error& er)
         {
@@ -78,16 +78,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             vertices.push_back(last_y);
         }
         vertices.push_back(mouse_x);
-        vertices.push_back(mouse_y);
-
-        /*if (vertices.size() == 2 || vertices.size() == 4)
-            indices.push_back(vertices.size() / 2 - 1);
-        else if (vertices.size() > 4)
-        {
-            indices.push_back(vertices.size() / 2 - 2);
-            indices.push_back(vertices.size() / 2 - 1);
-        }*/
-        
+        vertices.push_back(mouse_y);        
     }
 }
 
@@ -95,15 +86,35 @@ void handle_input(GLFWwindow * window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !space_pressed)
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !last_space_state)
     {
-        space_pressed = true;
-        indices.push_back(0);
-        indices.push_back(vertices.size() / 2 - 1);
-        if (triangulation)
+        last_space_state = true;
+        polygons.push_back({});
+        polygon_index ++;
+
+        float first_x = vertices[poly_starting_index];
+        float first_y = vertices[poly_starting_index + 1];
+        float last_x  = vertices[vertices.size() - 2];
+        float last_y  = vertices[vertices.size() - 1];
+        vertices.push_back(first_x);
+        vertices.push_back(first_y);
+        vertices.push_back(last_x);
+        vertices.push_back(last_y);
+        poly_starting_index = vertices.size();
+        /*if (triangulation)
         {
             vertices_triangualtion = get_triangulation(vertices);
-        }
+        }*/
+    }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE && last_space_state)
+    {
+        last_space_state = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS && !visi_enabled)
+    {
+        visi_enabled = true;
+        polygons.pop_back();
+        vertices_triangualtion = get_triangulation(polygons);
     }
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
@@ -206,34 +217,31 @@ int main(void)
         
         /* Draw polygon */
         program.use();
-        if (vertices.size() == 2)
+        std::size_t sz = vertices.size();
+        if ((sz / 2) % 2 == 1)
         {
             va_points.bind();
             vb_points.bind();
             vb_points.buffer_data(vertices.data(), sizeof(float) * vertices.size());
-            glDrawArrays(GL_POINTS, 0, vertices.size() / 2);
+            if (poly_starting_index > 0)
+                glDrawArrays(GL_LINES, 0, poly_starting_index / 2);
+            glDrawArrays(GL_POINTS, poly_starting_index / 2, 1);
         }
         else if (vertices.size() > 2)
         {
             va_points.bind();
-            /*ib_points.bind();
-            ib_points.buffer_data(indices.data(), indices.size());*/
             vb_points.bind();
             vb_points.buffer_data(vertices.data(), sizeof(float) * vertices.size());
-            //glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
             glDrawArrays(GL_LINES, 0, vertices.size() / 2);
         }
 
-        /* Draw visibility is possible */
-        if (space_pressed && vertices_visi.size() > 1)
+        /* Draw visibility if possible */
+        if (visi_enabled && vertices_visi.size() > 1)
         {
             program.use();
             va_visi.bind();
-            /*ib_visi.bind();
-            ib_visi.buffer_data(indices_visi.data(), indices_visi.size());*/
             vb_visi.bind();
             vb_visi.buffer_data(vertices_visi.data(), sizeof(float) * vertices_visi.size());
-            //glDrawElements(GL_TRIANGLES, indices_visi.size(), GL_UNSIGNED_INT, reinterpret_cast<void*>(0));
             glDrawArrays(GL_TRIANGLES, 0, vertices_visi.size() / 2);
         }
 

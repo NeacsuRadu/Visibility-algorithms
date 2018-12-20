@@ -4,6 +4,7 @@
 
 #include <stack>
 #include <iostream>
+#include <algorithm>
 
 struct stack_data 
 {
@@ -26,7 +27,7 @@ bool is_counter_clockwise(const std::vector<point>& points)
     return true;
 }
 
-void to_counter_clockwise(std::vector<point>& points)
+void revert_order(std::vector<point>& points)
 {
     std::vector<point> aux(points.rbegin(), points.rend());
     points.swap(aux);
@@ -35,7 +36,7 @@ void to_counter_clockwise(std::vector<point>& points)
 void simple_polygon_preprocessing(std::vector<point>& points, const point& origin)
 {
     if (!is_counter_clockwise(points))
-        to_counter_clockwise(points);
+        revert_order(points);
 
     float min = 2.0;
     std::size_t idx_min = 0;
@@ -227,22 +228,121 @@ std::vector<float> get_simple_polygon_visibility(const std::vector<float>& point
     return result;
 }
 
-std::vector<triangle*> triangles;
-std::vector<float> get_triangulation(const std::vector<float>& points)
+struct bridge_edge 
 {
-    
-    std::vector<point> vertices;
-    for (auto it = points.begin(); it != points.end(); ++it)
-    {   
-        float x = *it;
-        float y = *(++it);
-        vertices.push_back({x, y});
+    std::size_t index_polygon;
+    std::size_t index_hole;
+    double distance = 0.0;
+};
+
+std::vector<triangle*> triangles;
+std::vector<point> get_degenerate_polygon(std::vector<std::vector<point>>& polygons)
+{
+    if (polygons.size() == 1)
+        return polygons[0];
+
+    std::vector<bridge_edge> bridges;
+    for (std::size_t idx_polygon = 0; idx_polygon < polygons[0].size(); ++ idx_polygon)
+        for (std::size_t idx_hole = 0; idx_hole < polygons[1].size(); ++ idx_hole)
+            bridges.push_back({idx_polygon, idx_hole, distance(polygons[0][idx_polygon], polygons[1][idx_hole])});
+
+    std::sort(bridges.begin(), bridges.end(), [](const bridge_edge& e1, const bridge_edge& e2) { 
+        return e1.distance <= e2.distance; });
+
+    std::size_t edge_index = 0;
+    for (const auto& e : bridges)
+    {
+        bool is_valid = true;
+        for (std::size_t idx = 0; idx < polygons[0].size() - 1; ++ idx)
+        {
+            if (polygons[0][e.index_polygon] == polygons[0][idx] ||
+                polygons[0][e.index_polygon] == polygons[0][idx + 1])
+                continue;
+
+            auto pt = get_segments_intersection(polygons[0][idx], polygons[0][idx + 1], 
+                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
+            if (pt != error_point)
+            {
+                is_valid = false;
+                break;
+            }
+        }
+        if (!is_valid)
+        {
+            edge_index ++;
+            continue;
+        }
+        if (polygons[0][e.index_polygon] != polygons[0][0] && 
+            polygons[0][e.index_polygon] != polygons[0][polygons[0].size() - 1])
+        {
+            auto pt = get_segments_intersection(polygons[0][0], polygons[0][polygons[0].size() - 1],
+                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
+            if (pt != error_point)
+            {
+                edge_index ++;
+                continue;
+            }
+        }
+
+        for (std::size_t idx = 0; idx < polygons[1].size() - 1; ++ idx)
+        {
+            if (polygons[1][e.index_hole] == polygons[1][idx] ||
+                polygons[1][e.index_hole] == polygons[1][idx + 1])
+                continue;
+
+            auto pt = get_segments_intersection(polygons[1][idx], polygons[1][idx + 1], 
+                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
+            if (pt != error_point)
+            {
+                is_valid = false;
+                break;
+            }
+        }
+        if (!is_valid)
+        {
+            edge_index ++;
+            continue;
+        }
+        if (polygons[1][e.index_hole] != polygons[1][0] && 
+            polygons[1][e.index_hole] != polygons[1][polygons[1].size() - 1])
+        {
+            auto pt = get_segments_intersection(polygons[1][1], polygons[1][polygons[1].size() - 1],
+                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
+            if (pt != error_point)
+            {
+                edge_index ++;
+                continue;
+            }
+        }
+
+        break;
     }
 
-    if (!is_counter_clockwise(vertices))
-        to_counter_clockwise(vertices);
+    bridge_edge e = bridges[edge_index];
+    /*polygons[0][e.index_polygon].is_dup = true;
+    polygons[1][e.index_hole].is_dup = true;*/
+    std::vector<point> res;
+    res.insert(res.end(), polygons[0].begin(), polygons[0].begin() + e.index_polygon + 1);
+    res[res.size() - 1].is_dup = true;
+    res.insert(res.end(), polygons[1].begin() + e.index_hole, polygons[1].end());
+    res.insert(res.end(), polygons[1].begin(), polygons[1].begin() + e.index_hole + 1);
+    res[res.size() - 1].is_dup = true;
+    res.insert(res.end(), polygons[0].begin() + e.index_polygon, polygons[0].end());
+    return res;
+}
 
-    triangles = get_triangulation(vertices);
+std::vector<float> get_triangulation(std::vector<std::vector<point>>& polygons)
+{
+    // the outer polygon must have vertices in counter clockwise order 
+    // and the inner polygons must have vertices in clockwise order
+    if (!is_counter_clockwise(polygons[0]))
+        revert_order(polygons[0]);
+    for (std::size_t idx = 1; idx < polygons.size(); ++idx)
+        if (is_counter_clockwise(polygons[idx]))
+            revert_order(polygons[idx]);
+    
+    auto degenerate_polygon = get_degenerate_polygon(polygons);
+    triangles = get_triangulation(degenerate_polygon);
     std::vector<float> result;
     for (auto& tri: triangles)
     {
@@ -409,11 +509,11 @@ void get_visibility_from_vertex(const std::vector<triangle*> tri, const point& q
     }
 }
 
-std::vector<triangle*> get_polygon_visibility_triangles(const std::vector<float>& points, float px, float py)
+std::vector<triangle*> get_polygon_visibility_triangles(std::vector<std::vector<point>>& polygons, float px, float py)
 {
     std::cout << "Get polygon visibility" << std::endl;
     if (triangles.size() == 0)
-        get_triangulation(points);
+        get_triangulation(polygons);
 
     position pos;
     auto tri = get_triangles(px, py, pos);
@@ -451,7 +551,7 @@ std::vector<triangle*> get_polygon_visibility_triangles(const std::vector<float>
     return visibility;
 }
 
-std::vector<float> get_polygon_visibility(const std::vector<float>& points, float px, float py)
+std::vector<float> get_polygon_visibility(std::vector<std::vector<point>>& points, float px, float py)
 {
     auto triangles = get_polygon_visibility_triangles(points, px, py);
     std::vector<float> res;

@@ -236,99 +236,101 @@ struct bridge_edge
 };
 
 std::vector<triangle*> triangles;
-std::vector<point> get_degenerate_polygon(std::vector<std::vector<point>>& polygons)
+bool bridge_intersects_polygon(const std::vector<point> polygon, const point& pp, const point& ph)
 {
-    if (polygons.size() == 1)
-        return polygons[0];
-
-    std::vector<bridge_edge> bridges;
-    for (std::size_t idx_polygon = 0; idx_polygon < polygons[0].size(); ++ idx_polygon)
-        for (std::size_t idx_hole = 0; idx_hole < polygons[1].size(); ++ idx_hole)
-            bridges.push_back({idx_polygon, idx_hole, distance(polygons[0][idx_polygon], polygons[1][idx_hole])});
-
-    std::sort(bridges.begin(), bridges.end(), [](const bridge_edge& e1, const bridge_edge& e2) { 
-        return e1.distance <= e2.distance; });
-
-    std::size_t edge_index = 0;
-    for (const auto& e : bridges)
+    auto sz = polygon.size();
+    if (pp != polygon[0] || pp != polygon[sz - 1])
     {
-        bool is_valid = true;
-        for (std::size_t idx = 0; idx < polygons[0].size() - 1; ++ idx)
-        {
-            if (polygons[0][e.index_polygon] == polygons[0][idx] ||
-                polygons[0][e.index_polygon] == polygons[0][idx + 1])
-                continue;
-
-            auto pt = get_segments_intersection(polygons[0][idx], polygons[0][idx + 1], 
-                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
-            if (pt != error_point)
-            {
-                is_valid = false;
-                break;
-            }
-        }
-        if (!is_valid)
-        {
-            edge_index ++;
-            continue;
-        }
-        if (polygons[0][e.index_polygon] != polygons[0][0] && 
-            polygons[0][e.index_polygon] != polygons[0][polygons[0].size() - 1])
-        {
-            auto pt = get_segments_intersection(polygons[0][0], polygons[0][polygons[0].size() - 1],
-                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
-            if (pt != error_point)
-            {
-                edge_index ++;
-                continue;
-            }
-        }
-
-        for (std::size_t idx = 0; idx < polygons[1].size() - 1; ++ idx)
-        {
-            if (polygons[1][e.index_hole] == polygons[1][idx] ||
-                polygons[1][e.index_hole] == polygons[1][idx + 1])
-                continue;
-
-            auto pt = get_segments_intersection(polygons[1][idx], polygons[1][idx + 1], 
-                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
-            if (pt != error_point)
-            {
-                is_valid = false;
-                break;
-            }
-        }
-        if (!is_valid)
-        {
-            edge_index ++;
-            continue;
-        }
-        if (polygons[1][e.index_hole] != polygons[1][0] && 
-            polygons[1][e.index_hole] != polygons[1][polygons[1].size() - 1])
-        {
-            auto pt = get_segments_intersection(polygons[1][1], polygons[1][polygons[1].size() - 1],
-                polygons[0][e.index_polygon], polygons[1][e.index_hole]);
-            if (pt != error_point)
-            {
-                edge_index ++;
-                continue;
-            }
-        }
-
-        break;
+        auto pt = get_segments_intersection(pp, ph, polygon[0], polygon[sz - 1]);
+        if (pt != error_point)
+            return true;
     }
 
-    bridge_edge e = bridges[edge_index];
-    /*polygons[0][e.index_polygon].is_dup = true;
-    polygons[1][e.index_hole].is_dup = true;*/
-    std::vector<point> res;
-    res.insert(res.end(), polygons[0].begin(), polygons[0].begin() + e.index_polygon + 1);
-    res[res.size() - 1].is_dup = true;
-    res.insert(res.end(), polygons[1].begin() + e.index_hole, polygons[1].end());
-    res.insert(res.end(), polygons[1].begin(), polygons[1].begin() + e.index_hole + 1);
-    res[res.size() - 1].is_dup = true;
-    res.insert(res.end(), polygons[0].begin() + e.index_polygon, polygons[0].end());
-    return res;
+    for (std::size_t idx = 0; idx < sz - 1; ++ idx)
+    {
+        if (pp == polygon[idx] || pp == polygon[idx + 1])
+            continue;
+
+        auto pt = get_segments_intersection(pp, ph, polygon[idx], polygon[idx + 1]);
+        if (pt != error_point)
+            return true;
+    }
+
+    return false;
+}
+
+bool bridge_intersects_holes(const point& pp, const point&ph, 
+    const std::vector<std::vector<point>> holes)
+{
+    for (std::size_t idx = 1; idx < holes.size(); ++idx)
+        if (bridge_intersects_polygon(holes[idx], pp, ph))
+            return true;
+    return false;
+}
+
+std::vector<point> get_degenerate_polygon(const std::vector<std::vector<point>>& in)
+{   
+    std::cout << "in" << std::endl;
+    if (in.size() == 1)
+        return in[0];
+
+    auto polygons = in;
+    auto dp = polygons[0]; // degenerate polygon
+    for(std::size_t _ = 1; _ < in.size(); ++_)
+    {
+        std::cout << "iteration: " << _ << std::endl;
+        for (std::size_t hole_nr = 1; hole_nr < polygons.size(); ++ hole_nr)
+        {
+            std::cout << "nr: " << hole_nr << std::endl;
+            auto& hole = polygons[hole_nr];
+
+            std::vector<bridge_edge> bridges;
+            for (std::size_t idx_p = 0; idx_p < dp.size(); ++ idx_p)
+                for (std::size_t idx_h = 0; idx_h < hole.size(); ++ idx_h)
+                    bridges.push_back({idx_p, idx_h, distance(dp[idx_p], hole[idx_h])});
+
+            std::sort(bridges.begin(), bridges.end(), 
+                [](const bridge_edge& e1, const bridge_edge& e2) {
+                return e1.distance < e2.distance; });
+
+            std::size_t idx_edge = 0;
+            for (const auto& e: bridges)
+            {
+                if (bridge_intersects_polygon(dp, dp[e.index_polygon], hole[e.index_hole]) ||
+                    //bridge_intersects_polygon(hole, hole[e.index_hole], dp[e.index_polygon]) ||
+                    bridge_intersects_holes(hole[e.index_hole], dp[e.index_polygon], polygons))
+                    idx_edge ++;
+                else
+                {
+                    std::cout << "Fould good one" << std::endl;
+                    break;
+                }
+            }
+
+            std::cout << idx_edge << std::endl;
+            if (idx_edge == bridges.size())
+                continue;
+
+            auto& e = bridges[idx_edge];
+            std::vector<point> aux;
+            aux.insert(aux.end(), dp.begin(), dp.begin() + e.index_polygon + 1);
+            aux[aux.size() - 1].is_dup = true;
+            aux.insert(aux.end(), hole.begin() + e.index_hole, hole.end());
+            aux.insert(aux.end(), hole.begin(), hole.begin() + e.index_hole + 1);
+            aux[aux.size() - 1].is_dup = true;
+            aux.insert(aux.end(), dp.begin() + e.index_polygon, dp.end());
+
+            dp.swap(aux);
+
+            if (hole_nr < polygons.size() - 1)
+                polygons[hole_nr].swap(polygons[polygons.size() - 1]);
+            polygons.pop_back();
+            break;
+        }
+    }
+
+    std::cout << "out" << std::endl;
+    return dp;
 }
 
 std::vector<float> get_triangulation(std::vector<std::vector<point>>& polygons)

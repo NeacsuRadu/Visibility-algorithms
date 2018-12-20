@@ -14,7 +14,10 @@ unsigned int WINDOW_WIDTH  = 640;
 unsigned int WINDOW_HEIGHT = 480;
 
 bool visi_enabled = false;
+bool show_triangulation = true;
+
 bool last_space_state = false;
+bool last_t_state = false;
 
 std::vector<float>        vertices;
 std::vector<unsigned int> indices;
@@ -27,12 +30,9 @@ std::vector<float>        vertices_visi;
 std::vector<unsigned int> indices_visi;
 
 std::vector<float>        vertices_triangualtion;
-std::vector<float>        vertices_triangle;
 
 
 bool space_pressed = false;
-
-bool triangulation = true;
 
 void cursor_pos_to_xoy(double width, double height, double& x, double& y)
 {
@@ -116,6 +116,13 @@ void handle_input(GLFWwindow * window)
         polygons.pop_back();
         vertices_triangualtion = get_triangulation(polygons);
     }
+    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !last_t_state)
+    {
+        last_t_state = true;
+        show_triangulation = !show_triangulation;
+    }
+    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && last_t_state)
+        last_t_state = false;
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
         space_pressed = false;
@@ -195,10 +202,6 @@ int main(void)
     vertex_buffer vb_triangulation;
     va_triangulation.add_buffer(vb_triangulation, layout);
 
-    vertex_array va_tri;
-    vertex_buffer vb_tri;
-    va_tri.add_buffer(vb_tri, layout);
-
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -246,7 +249,7 @@ int main(void)
         }
 
         /* Draw triangles */
-        if (triangulation)
+        if (show_triangulation)
         {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             program.use();
@@ -257,15 +260,6 @@ int main(void)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
         
-        if (vertices_triangle.size() > 0)
-        {
-            program.use();
-            va_tri.bind();
-            vb_tri.bind();
-            vb_tri.buffer_data(vertices_triangle.data(), sizeof(float) * vertices_triangle.size());
-            glDrawArrays(GL_TRIANGLES, 0, vertices_triangle.size() / 2);
-        }
-
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 

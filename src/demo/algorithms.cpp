@@ -346,8 +346,10 @@ std::vector<float> get_triangulation(std::vector<std::vector<point>>& polygons)
     auto degenerate_polygon = get_degenerate_polygon(polygons);
     triangles = get_triangulation(degenerate_polygon);
     std::vector<float> result;
+    std::cout << "TRIANGULATION: " << std::endl;
     for (auto& tri: triangles)
     {
+        std::cout << "tri: " << tri->e1->a.x << " " << tri->e1->a.y << " -- " << tri->e1->b.x << " " << tri->e1->b.y << " -- " << tri->e2->b.x << " " << tri->e2->b.y << std::endl;
         result.push_back(tri->e1->a.x);
         result.push_back(tri->e1->a.y);
         result.push_back(tri->e1->b.x);
@@ -361,22 +363,26 @@ std::vector<float> get_triangulation(std::vector<std::vector<point>>& polygons)
 
 std::vector<triangle*> get_triangles(float mouse_x, float mouse_y, position& pos)
 {
+    std::cout << "Get triangles: " << mouse_x << " " << mouse_y << std::endl;
     std::vector<triangle*> result;
     for (auto& it : triangles)
     {
         if (point_in_triangle(it->e1->a, it->e1->b, it->e2->b, {mouse_x, mouse_y}))
         {
+            std::cout << "interior" << std::endl;
             result.push_back(it);
             pos = position::interior;
             break;
         }
         else if (point_on_triangle(it->e1->a, it->e1->b, it->e2->b, {mouse_x, mouse_y}))
         {
+            std::cout << "line" << std::endl;
             result.push_back(it);
             pos = position::line;
         }
         else if (point_is_triangle_vertex(it->e1->a, it->e1->b, it->e2->b, {mouse_x, mouse_y}))
         {
+            std::cout << "vertex" << std::endl;
             result.push_back(it);
             pos = position::point;
         }
@@ -494,6 +500,7 @@ void get_visibility_from_line(const std::vector<triangle*> tri, const point& q, 
 
 void get_visibility_from_vertex(const std::vector<triangle*> tri, const point& q, std::vector<triangle*>& visibility)
 {
+    std::cout << "get visibility from vertex: " << tri.size() << std::endl;
     for (auto& t : tri)
     {
         edge * e = nullptr;
@@ -556,6 +563,7 @@ std::vector<triangle*> get_polygon_visibility_triangles(std::vector<std::vector<
 std::vector<float> get_polygon_visibility(std::vector<std::vector<point>>& points, float px, float py)
 {
     auto triangles = get_polygon_visibility_triangles(points, px, py);
+    std::cout << "Visibility triangles: " << triangles.size() << std::endl;
     std::vector<float> res;
     for (auto t : triangles)
     {
@@ -567,4 +575,67 @@ std::vector<float> get_polygon_visibility(std::vector<std::vector<point>>& point
         res.push_back(t->e2->b.y);
     }
     return res;
+}
+
+bool is_point_visible(const std::vector<triangle*>& triangles, const point& p)
+{
+    for (auto& t: triangles)
+        if (point_is_triangle_vertex(t->e1->a, t->e1->b, t->e2->b, p))
+            return true;
+
+    return false;
+}
+
+std::vector<point> get_visibile_points(const std::vector<std::vector<point>>& points,
+    const std::vector<triangle*>& triangles, const point& p)
+{
+    std::cout << "get visibile points" << std::endl;
+    std::cout << "no of tri: " << triangles.size() << std::endl;
+    for (auto t: triangles)
+        std::cout << "tri: " << t->e1->a.x << " " << t->e1->a.y << " -- " << t->e1->b.x << " " << t->e1->b.y << " -- " << t->e2->b.x << " " << t->e2->b.y << std::endl;
+    std::vector<point> res;
+    auto sz = points.size();
+    for (std::size_t i = 0; i < sz; ++ i)
+    {
+        auto sz_poly = points[i].size();
+        for (std::size_t j = 0; j < sz_poly; ++j)
+        {
+            std::cout << "point: " << points[i][j].x << " " << points[i][j].y << std::endl;
+            if (points[i][j] == p) // nu ne intereseaza punctul din care ne uitam
+                continue;
+
+            if (is_point_visible(triangles, points[i][j]))
+                res.push_back(points[i][j]);
+        }
+    }
+    return res;
+}
+
+graph<point, compare_pt> * get_visibility_graph(std::vector<std::vector<point>>& points)
+{   
+    std::size_t sz = points.size();
+    std::vector<point> nodes;
+    for (std::size_t i = 0; i < sz; ++i)
+        nodes.insert(nodes.end(), points[i].begin(), points[i].end());
+    std::cout << "no nodes: " << nodes.size() << std::endl;
+    graph<point, compare_pt> * g = new graph<point, compare_pt>(nodes);
+
+    for (std::size_t i = 0; i < sz; ++ i)
+    {
+        std::cout << "poligon nr:  " << i << std::endl;
+        std::size_t sz_poly = points[i].size();
+        for (std::size_t j = 0; j < sz_poly; ++j)
+        {
+            
+            auto view_point = points[i][j];
+            std::cout << "view: " << view_point.x << " " << view_point.y << std::endl;
+            auto triangles = get_polygon_visibility_triangles(points, view_point.x, view_point.y);
+            auto visible_points = get_visibile_points(points, triangles, view_point);
+            std::cout << "point nr : " << j << " vis: " << visible_points.size() << std::endl;
+            for (auto& pt: visible_points)
+                g->add_edge(view_point, pt, distance(view_point, pt));
+        }
+    }
+    g->compute_all_paths();
+    return g;
 }

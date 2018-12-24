@@ -164,6 +164,7 @@
     <ClInclude Include="algorithms.h" />
     <ClInclude Include="circular_list.h" />
     <ClInclude Include="geometry.h" />
+    <ClInclude Include="graph.h" />
     <ClInclude Include="index_buffer.h" />
     <ClInclude Include="polygon_visibility.h" />
     <ClInclude Include="shader_program.h" />

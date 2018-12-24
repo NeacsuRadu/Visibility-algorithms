@@ -30,6 +30,14 @@ struct point
     bool is_dup = false;
 };
 
+struct compare_pt 
+{
+    bool operator () (const point& a, const point& b) const 
+    {
+        return a.x < b.x;
+    }
+};
+
 struct triangle;
 
 struct edge
@@ -184,6 +192,10 @@ inline point get_segments_intersection(const point& p1, const point& p2, const p
 
 inline bool point_is_triangle_vertex(const point& t1, const point& t2, const point& t3, const point& point)
 {
+    std::cout << "point is vertex: " << point.x << " " << point.y << std::endl;
+    std::cout << t1.x << " " << t1.y << std::endl;
+    std::cout << t2.x << " " << t2.y << std::endl;
+    std::cout << t3.x << " " << t3.y << std::endl;
     return t1 == point || t2 == point || t3 == point; 
 }
 

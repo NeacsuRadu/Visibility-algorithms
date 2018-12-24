@@ -6,6 +6,7 @@
 #include "vertex_buffer_layout.h"
 #include "index_buffer.h"
 #include "algorithms.h"
+#include "graph.h"
 
 #include <iostream>
 #include <vector>
@@ -15,9 +16,11 @@ unsigned int WINDOW_HEIGHT = 480;
 
 bool visi_enabled = false;
 bool show_triangulation = true;
+bool show_graph = false;
 
 bool last_space_state = false;
 bool last_t_state = false;
+bool last_v_state = false;
 
 std::vector<float>        vertices;
 std::vector<unsigned int> indices;
@@ -31,6 +34,11 @@ std::vector<unsigned int> indices_visi;
 
 std::vector<float>        vertices_triangualtion;
 
+std::vector<float>        vertices_graph;
+
+std::size_t test_index = 0;
+
+graph<point, compare_pt> * g_visi_graph = nullptr;
 
 bool space_pressed = false;
 
@@ -59,7 +67,8 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         indices_visi.clear();
         try
         {
-            vertices_visi = get_polygon_visibility(polygons, mouse_x, mouse_y);
+            vertices_visi = get_polygon_visibility(polygons, polygons[0][test_index].x, polygons[0][test_index].y);
+            test_index ++;
         }
         catch(const std::runtime_error& er)
         {
@@ -101,10 +110,6 @@ void handle_input(GLFWwindow * window)
         vertices.push_back(last_x);
         vertices.push_back(last_y);
         poly_starting_index = vertices.size();
-        /*if (triangulation)
-        {
-            vertices_triangualtion = get_triangulation(vertices);
-        }*/
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE && last_space_state)
     {
@@ -115,6 +120,13 @@ void handle_input(GLFWwindow * window)
         visi_enabled = true;
         polygons.pop_back();
         vertices_triangualtion = get_triangulation(polygons);
+        /*g_visi_graph = get_visibility_graph(polygons);
+        auto verts = g_visi_graph->get_vertices();
+        for (auto& v: verts)
+        {
+            vertices_graph.push_back(v.x);
+            vertices_graph.push_back(v.y);
+        }*/
     }
     if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !last_t_state)
     {
@@ -123,6 +135,13 @@ void handle_input(GLFWwindow * window)
     }
     if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE && last_t_state)
         last_t_state = false;
+    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS && !last_v_state)
+    {
+        last_v_state = true;
+        show_graph = !show_graph;
+    }
+    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE && last_v_state)
+        last_v_state = false;
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
         space_pressed = false;
@@ -202,6 +221,10 @@ int main(void)
     vertex_buffer vb_triangulation;
     va_triangulation.add_buffer(vb_triangulation, layout);
 
+    vertex_array va_graph;
+    vertex_buffer vb_graph;
+    va_graph.add_buffer(vb_graph, layout);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -259,6 +282,17 @@ int main(void)
             glDrawArrays(GL_TRIANGLES, 0, vertices_triangualtion.size() / 2);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
+
+        /* Draw graph*/
+        if (show_graph)
+        {
+            std::cout << "here" << std::endl;
+            program.use();
+            va_graph.bind();
+            vb_graph.bind();
+            vb_graph.buffer_data(vertices_graph.data(), sizeof(float) * vertices_graph.size());
+            glDrawArrays(GL_LINES, 0, vertices_graph.size() / 2);
+        }
         
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -300,24 +334,37 @@ void afisare(const triangle * tr, bool dual = true)
 
 int test()
 {
-    /*std::vector<point> points = {
-        {1.0, 2.0},
-        {0.0, 1.0},
-        {-1.0, 2.0},
-        {-2.0, 2.0},
-        {-1.0, 0.0},
-        {-1.0, -1.0},
-        {1.0, -1.0}
-    };
+    std::vector<int> v {1, 2, 3, 4, 5, 6};
+    graph<int> g(v);
+    g.add_edge(1, 2, 7.0);
+    g.add_edge(1, 3, 9.0);
+    g.add_edge(1, 6, 14.0);
+    g.add_edge(2, 3, 10.0);
+    g.add_edge(2, 4, 15.0);
+    g.add_edge(3, 4, 11.0);
+    g.add_edge(3, 6, 2.0);
+    g.add_edge(4, 5, 6.0);
+    g.add_edge(5, 6, 9.0);
+    g.compute_all_paths();
 
-    auto triangles = get_triangulation(points);
-    std::cout << triangles.size() << std::endl;
-
-    for (auto& tr: triangles)
+    /*for (int i = 1; i <= 6; ++i)
     {
-        afisare(tr);
-        std::cout << std::endl;
+        for (int j = 1; j <= 6; ++ j)
+        {
+            if (i == j)
+                continue;
+
+            auto path = g.get_path(i, j);
+            std::cout << "Path from " << i << " to " << j << " is: ";
+            for (auto& node: path)
+                std::cout << node << " ";
+            std::cout << std::endl;
+        }
     }*/
+
+    auto path = g.get_path(1, 5);
+    for (auto x: path)
+        std::cout << x << std::endl;
 
     return 0;
 }

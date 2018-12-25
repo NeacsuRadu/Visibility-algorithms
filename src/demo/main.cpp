@@ -11,16 +11,18 @@
 #include <iostream>
 #include <vector>
 ;
-unsigned int WINDOW_WIDTH  = 640;
-unsigned int WINDOW_HEIGHT = 480;
+int WINDOW_WIDTH  = 640;
+int WINDOW_HEIGHT = 480;
 
 bool visi_enabled = false;
 bool show_triangulation = true;
 bool show_graph = false;
+bool path = false;
 
 bool last_space_state = false;
 bool last_t_state = false;
 bool last_v_state = false;
+bool last_p_state = false;
 
 std::vector<float>        vertices;
 std::vector<unsigned int> indices;
@@ -36,18 +38,42 @@ std::vector<float>        vertices_triangualtion;
 
 std::vector<float>        vertices_graph;
 
+std::vector<float>        vertices_path;
+
 std::size_t test_index = 0;
 
 graph<point, compare_pt> * g_visi_graph = nullptr;
 
+std::vector<point>  path_points;
+
 bool space_pressed = false;
 
-void cursor_pos_to_xoy(double width, double height, double& x, double& y)
+void cursor_pos_to_xoy(double& x, double& y)
 {
     // coordonatele cursorului sunt masurate din coltul stanga sus al ferestrei ( x : 0 - width, y : 0 - height ) 
-    // pentru a le folosi trebuie sa le transformam in - 1.0 : 1.0 cu originea in centrul ferestrei 
-    x = (x / width - 0.5) * 2;
-    y = ((height - y) / height - 0.5) * 2;
+    // pentru a le folosi trebuie sa le transformam in - 1.0 : 1.0 cu originea in centrul ferestrei
+    x; // already ok 
+    y = static_cast<double>(WINDOW_HEIGHT) - y;
+}
+
+void normalize(double& x, double& y)
+{
+    x = ((x / static_cast<double>(WINDOW_WIDTH)) - 0.5) * 2;
+    y = ((y / static_cast<double>(WINDOW_HEIGHT)) - 0.5) * 2;
+}
+
+std::vector<float> normalize_data(const std::vector<point>& data)
+{
+    std::vector<float> res;
+    for (auto& pt: data)
+    {
+        double x = static_cast<double>(pt.x);
+        double y = static_cast<double>(pt.y);
+        normalize(x, y);
+        res.push_back(static_cast<float>(x));
+        res.push_back(static_cast<float>(y));
+    }
+    return res;
 }
 
 void mouse_button_callback(GLFWwindow * window, int button, int action, int mods)
@@ -60,14 +86,22 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
 
     double mouse_x, mouse_y;
     glfwGetCursorPos(window, &mouse_x, &mouse_y);
-    cursor_pos_to_xoy(WINDOW_WIDTH, WINDOW_HEIGHT, mouse_x, mouse_y);
-    if (visi_enabled)
+    cursor_pos_to_xoy(mouse_x, mouse_y);
+    long long xll = static_cast<long long>(mouse_x);
+    long long yll = static_cast<long long>(mouse_y);
+    normalize(mouse_x, mouse_y);
+    float xf = static_cast<float>(mouse_x);
+    float yf = static_cast<float>(mouse_y);
+
+    if (visi_enabled && !path)
     {
         vertices_visi.clear();
         indices_visi.clear();
         try
         {
-            vertices_visi = get_polygon_visibility(polygons, polygons[0][test_index].x, polygons[0][test_index].y);
+            
+            auto data = get_polygon_visibility(polygons, xll, yll);
+            vertices_visi = normalize_data(data);
             test_index ++;
         }
         catch(const std::runtime_error& er)
@@ -75,9 +109,21 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             std::cout << er.what() << std::endl;
         }
     }
+    else if (visi_enabled && path)
+    {
+        path_points.push_back({xll, yll});
+        if (path_points.size() > 2)
+            path_points.erase(path_points.cbegin());
+        if (path_points.size() == 2)
+        {
+            auto p = get_path_ab(path_points[0], path_points[1], polygons, g_visi_graph);
+            vertices_path = normalize_data(p);
+        }
+        //vertices_path = normalize_data(path_points);
+    }
     else 
     {
-        polygons[polygon_index].push_back({mouse_x, mouse_y});
+        polygons[polygon_index].push_back({xll, yll});
 
         if (vertices.size() - poly_starting_index > 2) 
         {
@@ -86,8 +132,8 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             vertices.push_back(last_x);
             vertices.push_back(last_y);
         }
-        vertices.push_back(mouse_x);
-        vertices.push_back(mouse_y);        
+        vertices.push_back(xf);
+        vertices.push_back(yf);        
     }
 }
 
@@ -119,14 +165,11 @@ void handle_input(GLFWwindow * window)
     {
         visi_enabled = true;
         polygons.pop_back();
-        vertices_triangualtion = get_triangulation(polygons);
-        /*g_visi_graph = get_visibility_graph(polygons);
+        auto triangulation = get_triangulation(polygons);
+        vertices_triangualtion = normalize_data(triangulation);
+        g_visi_graph = get_visibility_graph(polygons);
         auto verts = g_visi_graph->get_vertices();
-        for (auto& v: verts)
-        {
-            vertices_graph.push_back(v.x);
-            vertices_graph.push_back(v.y);
-        }*/
+        vertices_graph = normalize_data(verts);
     }
     if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !last_t_state)
     {
@@ -142,6 +185,17 @@ void handle_input(GLFWwindow * window)
     }
     if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE && last_v_state)
         last_v_state = false;
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && !last_p_state)
+    {
+        last_p_state = true;
+        path = !path;
+    }
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_RELEASE && last_p_state)
+    {
+        last_p_state = false;
+        vertices_path.clear();
+        path_points.clear();
+    }
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
         space_pressed = false;
@@ -225,6 +279,10 @@ int main(void)
     vertex_buffer vb_graph;
     va_graph.add_buffer(vb_graph, layout);
 
+    vertex_array va_path;
+    vertex_buffer vb_path;
+    va_path.add_buffer(vb_path, layout);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -262,7 +320,7 @@ int main(void)
         }
 
         /* Draw visibility if possible */
-        if (visi_enabled && vertices_visi.size() > 1)
+        if (visi_enabled && vertices_visi.size() > 1 && !path)
         {
             program.use();
             va_visi.bind();
@@ -286,12 +344,20 @@ int main(void)
         /* Draw graph*/
         if (show_graph)
         {
-            std::cout << "here" << std::endl;
             program.use();
             va_graph.bind();
             vb_graph.bind();
             vb_graph.buffer_data(vertices_graph.data(), sizeof(float) * vertices_graph.size());
             glDrawArrays(GL_LINES, 0, vertices_graph.size() / 2);
+        }
+
+        if (path)
+        {
+            program.use();
+            va_path.bind();
+            vb_path.bind();
+            vb_path.buffer_data(vertices_path.data(), sizeof(float) * vertices_path.size());
+            glDrawArrays(GL_POINTS, 0, vertices_path.size() / 2);
         }
         
         /* Swap front and back buffers */
@@ -336,7 +402,7 @@ int test()
 {
     std::vector<int> v {1, 2, 3, 4, 5, 6};
     graph<int> g(v);
-    g.add_edge(1, 2, 7.0);
+    /*g.add_edge(1, 2, 7.0);
     g.add_edge(1, 3, 9.0);
     g.add_edge(1, 6, 14.0);
     g.add_edge(2, 3, 10.0);
@@ -345,7 +411,7 @@ int test()
     g.add_edge(3, 6, 2.0);
     g.add_edge(4, 5, 6.0);
     g.add_edge(5, 6, 9.0);
-    g.compute_all_paths();
+    g.compute_all_paths();*/
 
     /*for (int i = 1; i <= 6; ++i)
     {
@@ -362,9 +428,9 @@ int test()
         }
     }*/
 
-    auto path = g.get_path(1, 5);
+    /*auto path = g.get_path(1, 5);
     for (auto x: path)
         std::cout << x << std::endl;
-
+*/
     return 0;
 }

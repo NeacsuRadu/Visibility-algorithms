@@ -6,7 +6,7 @@ void polygon_visibility::preprocessing(const std::vector<float>& points)
 
 }
 
-std::vector<float> polygon_visibility::get_visibility(double x, double y)
+std::vector<float> polygon_visibility::get_visibility(float x, float y)
 {
     return {};
 }

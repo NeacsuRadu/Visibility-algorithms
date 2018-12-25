@@ -25,8 +25,8 @@ inline int index(int idx, int size)
 
 struct point
 {
-    double x = 0.0;
-    double y = 0.0;
+    long long x = 0;
+    long long y = 0;
     bool is_dup = false;
 };
 
@@ -78,7 +78,7 @@ inline triangle * get_triangle(const point& a, const point& b, const point& c)
     return tri;
 }
 
-static point error_point = {-9999.999999, -9999.99999};
+static point error_point = {-99999, -99999};
 inline bool operator == (const point& p, const point& q)
 {
     return p.x == q.x && p.y == q.y;
@@ -108,30 +108,30 @@ struct vertex
 struct line_equation
 {
     /* ax + by + c = 0 */
-    double a = 0.0;
-    double b = 0.0;
-    double c = 0.0;
+    long long a = 0;
+    long long b = 0;
+    long long c = 0;
 };
 
-inline double determinant(
-    double l11, double l12, 
-    double l21, double l22)
+inline long long determinant(
+    long long l11, long long l12, 
+    long long l21, long long l22)
 {
     return l11*l22 - l12*l21;
 }
 
-inline double determinant(
-    double l11, double l12, double l13,
-    double l21, double l22, double l23,
-    double l31, double l32, double l33)
+inline long long determinant(
+    long long l11, long long l12, long long l13,
+    long long l21, long long l22, long long l23,
+    long long l31, long long l32, long long l33)
 {
     return l11*l22*l33 + l12*l23*l31 + l21*l32*l13 
         -  l13*l22*l31 - l11*l32*l23 - l33*l21*l12;
 }
 
-inline double distance(const point& p, const point& q)
+inline long long distance(const point& p, const point& q)
 {
-    return std::sqrt(std::pow(p.x - q.x, 2) + std::pow(p.y - q.y, 2));
+    return static_cast<long long>(std::sqrt(std::pow(p.x - q.x, 2) + std::pow(p.y - q.y, 2)));
 }
 
 inline orientation test_orientation(const point& p, const point& q, const point& r)
@@ -156,9 +156,9 @@ inline line_equation get_line_equation(const point& p, const point& q)
         throw std::runtime_error("line equation called with two equal point");
 
     if (p.x == q.x)
-        return {1.0, 0.0, -p.x};
+        return {1, 0, -p.x};
     if (p.y == q.y)
-        return {0.0, 1.0, -p.y};
+        return {0, 1, -p.y};
     return {p.y - q.y, q.x - p.x, p.x * q.y - q.x * p.y};
 }
 
@@ -218,12 +218,24 @@ inline bool point_in_triangle(const point& t1, const point& t2, const point& t3,
            test_orientation(t3, t1, point) == orientation::left;
 }
 
+inline bool point_in_triangle(const point& p, const triangle * t)
+{
+    std::cout << "point in triangle:" << std::endl;
+    auto o1 = test_orientation(t->e1->a, t->e1->b, p);
+    auto o2 = test_orientation(t->e2->a, t->e2->b, p);
+    auto o3 = test_orientation(t->e3->a, t->e3->b, p);
+    std::cout << static_cast<int>(o1) << " " << static_cast<int>(o2) << " " << static_cast<int>(o3) << std::endl;
+    return o1 != orientation::right && 
+        o2 != orientation::right &&
+        o3 != orientation::right;
+}
+
 inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)
 {
     if (vertices.size() <= 2)
         return false;
 
-    point dummy_point {p.x, 1.0};
+    point dummy_point {p.x, 600};
     unsigned int no_of_intersections = 0;
     for (std::size_t idx = 1; idx < vertices.size(); ++idx)
     {

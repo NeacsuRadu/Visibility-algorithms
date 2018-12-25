@@ -8,7 +8,7 @@ template<typename type, typename comp = std::less<type>>
 class graph
 {
 public:
-    using path = std::vector<std::size_t>;
+    using path = std::pair<std::vector<std::size_t>, long long>;
 
     graph(std::vector<type> nodes)
     {
@@ -22,7 +22,7 @@ public:
         }
     }
 
-    void add_edge(const type& a, const type& b, double distance)
+    void add_edge(const type& a, const type& b, long long distance)
     {
         auto it_a = m_nodes.find(a);
         if (it_a == m_nodes.end())
@@ -36,8 +36,9 @@ public:
         /*m_edges[it_b->second].push_back({it_a->second, distance});*/
     }
 
-    std::vector<type> get_path(const type& a, const type& b)
+    std::vector<type> get_path(const type& a, const type& b, long long& distance)
     {
+        distance = 0;
         auto it_a = m_nodes.find(a);
         if (it_a == m_nodes.end())
             return {};
@@ -47,7 +48,8 @@ public:
             return {};
 
 
-        auto path = m_paths[it_a->second][it_b->second];
+        auto path = m_paths[it_a->second][it_b->second].first;
+        distance = m_paths[it_a->second][it_b->second].second;
         
         std::vector<type> res;
         for (auto& node: path)
@@ -70,20 +72,21 @@ public:
         auto sz = m_edges.size();
         for (std::size_t idx_i = 0; idx_i < sz - 1; ++idx_i)
         {
-            auto prevs = _dijkstra(idx_i);
+            auto aux = _dijkstra(idx_i);
             for (std::size_t idx_j = 1; idx_j < sz; ++idx_j)
             {
                 std::cout << "Path from " << idx_i << " to " << idx_j << " : " << std::endl;
-                auto path = _get_path(prevs, idx_i, idx_j);
+                auto path = _get_path(aux, idx_i, idx_j);
+                auto distance = aux[idx_j].second;
                 auto rev_path = std::vector<std::size_t>(path.rbegin(), path.rend());
                 for (auto x: path)
                     std::cout << x << " ";
                 std::cout << std::endl;
-                m_paths[idx_j][idx_i].swap(path);
+                m_paths[idx_j][idx_i] = {path, distance};
                 for (auto x: rev_path)
                     std::cout << x << " ";
                 std::cout << std::endl;
-                m_paths[idx_i][idx_j].swap(rev_path);
+                m_paths[idx_i][idx_j] = {rev_path, distance};
             }
         }
     }
@@ -100,37 +103,33 @@ public:
         return res;
     }
 private:
-    std::vector<std::size_t> _get_path(const std::vector<std::size_t>& prevs, std::size_t root, std::size_t node)
+    std::vector<std::size_t> _get_path(const std::vector<std::pair<std::size_t, long long>>& prevs, std::size_t root, std::size_t node)
     {
         std::vector<std::size_t> path;
 
         std::size_t crr = node;
-        while (prevs[crr] != crr)
+        while (prevs[crr].first != crr)
         {
             path.push_back(crr);
-            crr = prevs[crr];
+            crr = prevs[crr].first;
         }
         path.push_back(crr);
 
         return path;
     }
 
-    std::vector<std::size_t> _dijkstra(std::size_t root)
+    std::vector<std::pair<std::size_t, long long>> _dijkstra(std::size_t root)
     {
-        // distances vector
-        std::vector<double> dists(m_nodes.size(), 300.0);
-        dists[root] = 0.0;
-
-        // keep the previous node of b in the path from root to b
-        std::vector<std::size_t> prev(m_nodes.size(), 0);
-        prev[root] = root;
-
         // data for priority q, custom compare
-        using info = std::pair<std::size_t, double>;
+        using info = std::pair<std::size_t, long long>;
         using container = std::vector<info>;
         auto compare = [](const info& a, const info& b) -> bool {
             return a.second > b.second;
         };
+
+        container aux(m_nodes.size());
+        aux[root].first = root;
+        aux[root].second = 0;
 
         std::priority_queue<info, container, decltype(compare)> queue(compare);
         queue.push({root, 0});
@@ -141,23 +140,23 @@ private:
 
             for (auto& edge: m_edges[el.first])
             {
-                auto dist = dists[el.first] + edge.second;
-                if (dist < dists[edge.first]) 
+                auto dist = aux[el.first].second + edge.second;
+                if (dist < aux[edge.first].second) 
                 {
-                    dists[edge.first] = dist;
-                    prev[edge.first] = el.first;
+                    aux[edge.first].second = dist;
+                    aux[edge.first].first = el.first;
                     queue.push({edge.first, dist});
                 }
             }
         } 
 
-        return prev;
+        return aux;
     }
 
-    std::map<type, std::size_t, comp>      m_nodes;
-    std::map<std::size_t, type>            m_mapping;
+    std::map<type, std::size_t, comp>       m_nodes;
+    std::map<std::size_t, type>             m_mapping;
     std::vector<std::vector<
-        std::pair<std::size_t, double>>>   m_edges;
+        std::pair<std::size_t, long long>>> m_edges;
 
-    std::vector<std::vector<path>>         m_paths;
+    std::vector<std::vector<path>>          m_paths;
 };

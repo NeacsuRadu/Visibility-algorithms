@@ -57,7 +57,6 @@ std::vector<triangle*> get_triangulation(const std::vector<point>& points)
     auto list_it = list.get_first();
     while (list_it->next != list.get_first())
     {
-        std::cout << "here" << std::endl;
         if (list_it->info.coords.is_dup && 
             list_it->info.next->dual == nullptr)
         {

@@ -25,8 +25,8 @@ inline int index(int idx, int size)
 
 struct point
 {
-    long long x = 0;
-    long long y = 0;
+    double x = 0.0;
+    double y = 0.0;
     bool is_dup = false;
 };
 
@@ -34,6 +34,8 @@ struct compare_pt
 {
     bool operator () (const point& a, const point& b) const 
     {
+		if (a.x == b.x)
+			return a.y < b.y;
         return a.x < b.x;
     }
 };
@@ -78,7 +80,7 @@ inline triangle * get_triangle(const point& a, const point& b, const point& c)
     return tri;
 }
 
-static point error_point = {-99999, -99999};
+static point error_point = {-99999.0, -99999.0};
 inline bool operator == (const point& p, const point& q)
 {
     return p.x == q.x && p.y == q.y;
@@ -108,30 +110,30 @@ struct vertex
 struct line_equation
 {
     /* ax + by + c = 0 */
-    long long a = 0;
-    long long b = 0;
-    long long c = 0;
+    double a = 0;
+    double b = 0;
+    double c = 0;
 };
 
-inline long long determinant(
-    long long l11, long long l12, 
-    long long l21, long long l22)
+inline double determinant(
+    double l11, double l12, 
+    double l21, double l22)
 {
     return l11*l22 - l12*l21;
 }
 
-inline long long determinant(
-    long long l11, long long l12, long long l13,
-    long long l21, long long l22, long long l23,
-    long long l31, long long l32, long long l33)
+inline double determinant(
+    double l11, double l12, double l13,
+    double l21, double l22, double l23,
+    double l31, double l32, double l33)
 {
     return l11*l22*l33 + l12*l23*l31 + l21*l32*l13 
         -  l13*l22*l31 - l11*l32*l23 - l33*l21*l12;
 }
 
-inline long long distance(const point& p, const point& q)
+inline double distance(const point& p, const point& q)
 {
-    return static_cast<long long>(std::sqrt(std::pow(p.x - q.x, 2) + std::pow(p.y - q.y, 2)));
+    return std::sqrt(std::pow(p.x - q.x, 2) + std::pow(p.y - q.y, 2));
 }
 
 inline orientation test_orientation(const point& p, const point& q, const point& r)
@@ -192,10 +194,10 @@ inline point get_segments_intersection(const point& p1, const point& p2, const p
 
 inline bool point_is_triangle_vertex(const point& t1, const point& t2, const point& t3, const point& point)
 {
-    std::cout << "point is vertex: " << point.x << " " << point.y << std::endl;
-    std::cout << t1.x << " " << t1.y << std::endl;
-    std::cout << t2.x << " " << t2.y << std::endl;
-    std::cout << t3.x << " " << t3.y << std::endl;
+    //std::cout << "point is vertex: " << point.x << " " << point.y << std::endl;
+    //std::cout << t1.x << " " << t1.y << std::endl;
+   // std::cout << t2.x << " " << t2.y << std::endl;
+    //std::cout << t3.x << " " << t3.y << std::endl;
     return t1 == point || t2 == point || t3 == point; 
 }
 
@@ -210,21 +212,28 @@ inline bool point_on_triangle(const point& t1, const point& t2, const point& t3,
            aux  == 2;
 }
 
+inline bool point_is_in_tri_interior(const point& t1, const point& t2, const point& t3, const point& p)
+{
+    return  test_orientation(t1, t2, p) == orientation::left &&
+            test_orientation(t2, t3, p) == orientation::left &&
+            test_orientation(t3, t1, p) == orientation::left;
+}
+
 inline bool point_in_triangle(const point& t1, const point& t2, const point& t3, const point& point)
 {
     // counter clockwise order 
-    return test_orientation(t1, t2, point) == orientation::left &&
-           test_orientation(t2, t3, point) == orientation::left &&
-           test_orientation(t3, t1, point) == orientation::left;
+    return test_orientation(t1, t2, point) != orientation::right &&
+           test_orientation(t2, t3, point) != orientation::right &&
+           test_orientation(t3, t1, point) != orientation::right;
 }
 
 inline bool point_in_triangle(const point& p, const triangle * t)
 {
-    std::cout << "point in triangle:" << std::endl;
+    //std::cout << "point in triangle:" << std::endl;
     auto o1 = test_orientation(t->e1->a, t->e1->b, p);
     auto o2 = test_orientation(t->e2->a, t->e2->b, p);
     auto o3 = test_orientation(t->e3->a, t->e3->b, p);
-    std::cout << static_cast<int>(o1) << " " << static_cast<int>(o2) << " " << static_cast<int>(o3) << std::endl;
+    //std::cout << static_cast<int>(o1) << " " << static_cast<int>(o2) << " " << static_cast<int>(o3) << std::endl;
     return o1 != orientation::right && 
         o2 != orientation::right &&
         o3 != orientation::right;
@@ -232,20 +241,36 @@ inline bool point_in_triangle(const point& p, const triangle * t)
 
 inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)
 {
+    std::cout << "point in polygon" << std::endl;
     if (vertices.size() <= 2)
-        return false;
+        return {};
 
-    point dummy_point {p.x, 600};
+    std::cout << "Polygon: " << std::endl;
+    for (auto& pt: vertices)
+        std::cout << pt.x << " " << pt.y << " / ";
+    std::cout << std::endl;
+
+    point dummy_point {p.x, 2000.0};
     unsigned int no_of_intersections = 0;
     for (std::size_t idx = 1; idx < vertices.size(); ++idx)
     {
-        if (get_segments_intersection(vertices[idx - 1], vertices[idx], p, dummy_point) == error_point)
+        std::cout << "try edge: " << vertices[idx - 1].x << " " << vertices[idx - 1].y << " / " << vertices[idx].x << " " << vertices[idx].y << std::endl;
+        auto inter = get_segments_intersection(vertices[idx - 1], vertices[idx], p, dummy_point);
+        if (inter == error_point)
             continue;
 
+        std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
         no_of_intersections ++;
     }
-    if (get_segments_intersection(vertices[0], vertices[vertices.size() - 1], p, dummy_point) != error_point)
+    std::cout << "try edge: " << vertices[0].x << " " << vertices[0].y << " / " << vertices[vertices.size() - 1].x << " " << vertices[vertices.size() - 1].y << std::endl;
+    auto inter = get_segments_intersection(vertices[0], vertices[vertices.size() - 1], p, dummy_point);
+    if (inter != error_point)
+    {
+        std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
         no_of_intersections ++;
+    }
 
-    return (no_of_intersections % 2) == 1;
+    std::cout << "Number of intersections: " << no_of_intersections << std::endl;
+
+    return (no_of_intersections % 2 == 1);
 }

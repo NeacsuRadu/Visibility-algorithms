@@ -80,6 +80,9 @@
     <ClInclude Include="graph.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="singleton.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\shaders\vertex_shaders\lines.vs">

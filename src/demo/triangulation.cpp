@@ -21,6 +21,13 @@ bool is_ear(node<boundary_point> *& node)
     auto it = node->next->next;
     while (it != node->prev)
     {
+        if (it->info.coords == node->info.coords ||
+            it->info.coords == node->prev->info.coords ||
+            it->info.coords == node->next->info.coords)
+        {
+            it = it->next;
+            continue;
+        }
         if (point_in_triangle(node->prev->info.coords, node->info.coords, node->next->info.coords, it->info.coords))
             return false;
         it = it->next;
@@ -30,7 +37,7 @@ bool is_ear(node<boundary_point> *& node)
 
 std::vector<triangle*> get_triangulation(const std::vector<point>& points)
 {
-    std::cout << "Get triangulation" << std::endl;
+    //std::cout << "Get triangulation" << std::endl;
     std::vector<boundary_point> aux;
     for (auto& pt: points)
         aux.push_back({pt});
@@ -60,7 +67,7 @@ std::vector<triangle*> get_triangulation(const std::vector<point>& points)
         if (list_it->info.coords.is_dup && 
             list_it->info.next->dual == nullptr)
         {
-            std::cout << "found one" << std::endl;
+            //std::cout << "found one" << std::endl;
             auto search_it = list_it->next;
             while (true)
             {
@@ -69,8 +76,8 @@ std::vector<triangle*> get_triangulation(const std::vector<point>& points)
                     break;
                 search_it = search_it->next;
             }
-            std::cout << list_it->info.next->a.x << " " << list_it->info.next->a.y << "  " << list_it->info.next->b.x << " " << list_it->info.next->b.y << std::endl;
-            std::cout << search_it->info.next->a.x << " " << search_it->info.next->a.y << "  " << search_it->info.next->b.x << " " << search_it->info.next->b.y << std::endl;
+            //std::cout << list_it->info.next->a.x << " " << list_it->info.next->a.y << "  " << list_it->info.next->b.x << " " << list_it->info.next->b.y << std::endl;
+            //std::cout << search_it->info.next->a.x << " " << search_it->info.next->a.y << "  " << search_it->info.next->b.x << " " << search_it->info.next->b.y << std::endl;
             list_it->info.next->dual = search_it->info.next;
             search_it->info.next->dual = list_it->info.next;
         }
@@ -82,10 +89,15 @@ std::vector<triangle*> get_triangulation(const std::vector<point>& points)
     std::vector<triangle*> triangles;
     while (no_of_triangles > 0)
     {
-        std::cout << "LOOP" << std::endl;
+        std::cout << "loop" << std::endl;
+        //std::cout << "LOOP" << std::endl;
         if (test_orientation(it->prev->info.coords, it->info.coords,  it->next->info.coords) == orientation::left &&
             is_ear(it))
         {
+             auto p1 = it->prev->info.coords;
+             auto p2 = it->info.coords;
+             auto p3 = it->next->info.coords;
+             std::cout << "found point" << p1.x << " " << p1.y << " / " << p2.x << " " << p2.y << " / " << p3.x << " " << p3.y << std::endl;  
              auto tri = new triangle();
              tri->e1 = it->info.prev;
              tri->e2 = it->info.next;

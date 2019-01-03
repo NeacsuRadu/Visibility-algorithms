@@ -23,6 +23,7 @@ bool last_space_state = false;
 bool last_t_state = false;
 bool last_v_state = false;
 bool last_p_state = false;
+bool last_d_state = false;
 
 std::vector<float>        vertices;
 std::vector<unsigned int> indices;
@@ -39,6 +40,8 @@ std::vector<float>        vertices_triangualtion;
 std::vector<float>        vertices_graph;
 
 std::vector<float>        vertices_path;
+
+std::vector<float>        degenerate_polygon;
 
 std::size_t test_index = 0;
 
@@ -62,13 +65,91 @@ void normalize(double& x, double& y)
     y = ((y / static_cast<double>(WINDOW_HEIGHT)) - 0.5) * 2;
 }
 
+bool can_add_edge(const point& p1, const point& p2)
+{
+    // testam daca p2 poate fi legat la ultimul poligon construit
+    // p1 face deja parte din poligon
+    for (std::size_t idx_p = 0; idx_p < polygons.size(); ++ idx_p)
+    {
+        auto sz = polygons[idx_p].size();
+        for (std::size_t idx_v = 0; idx_v < sz - 1; ++ idx_v)
+        {
+            if (p1 == polygons[idx_p][idx_v + 1])
+                continue;
+
+            auto inters = get_segments_intersection(polygons[idx_p][idx_v], polygons[idx_p][idx_v + 1], p1, p2);
+            if (inters != error_point)
+            {
+                std::cout << "point not ok" << std::endl;
+                return false;
+            }
+        }
+
+        if (idx_p == polygons.size() - 1)
+            continue;
+
+        auto inters = get_segments_intersection(polygons[idx_p][0], polygons[idx_p][sz - 1], p1, p2);
+        if (inters != error_point)
+        {
+            std::cout << "point not ok" << std::endl;
+            return false;
+        }
+    }
+
+    std::cout << "point ok" << std::endl;
+    return true;
+}
+
+bool can_close_polygon()
+{
+    if (polygons[polygon_index].size() <= 2)
+        return false;
+
+
+    const auto& p1 = polygons[polygon_index][0];
+    const auto& p2 = polygons[polygon_index][polygons[polygon_index].size() - 1];
+    for (std::size_t idx_p = 0; idx_p < polygons.size() - 1; ++ idx_p)
+    {
+        auto sz = polygons[idx_p].size();
+        for (std::size_t idx_v = 0; idx_v < sz - 1; ++ idx_v)
+        {
+            auto inters = get_segments_intersection(polygons[idx_p][idx_v], polygons[idx_p][idx_v + 1], p1, p2);
+            if (inters != error_point)
+            {
+                std::cout << "cannot close polygon" << std::endl;
+                return false;
+            }
+        }
+
+        auto inters = get_segments_intersection(polygons[idx_p][0], polygons[idx_p][sz - 1], p1, p2);
+        if (inters != error_point)
+        {
+            std::cout << "cannot close polygon" << std::endl;
+            return false;
+        }
+    }   
+
+    for (std::size_t idx_v = 1; idx_v < polygons[polygon_index].size() - 2; ++ idx_v)
+    {
+        auto inters = get_segments_intersection(polygons[polygon_index][idx_v], polygons[polygon_index][idx_v + 1], p1, p2);
+        if (inters != error_point)
+        {
+            std::cout << "cannot close polygon" << std::endl;
+            return false;
+        }
+    }
+
+    std::cout << "can close polygon" << std::endl;
+    return true;
+}
+
 std::vector<float> normalize_data(const std::vector<point>& data)
 {
     std::vector<float> res;
     for (auto& pt: data)
     {
-        double x = static_cast<double>(pt.x);
-        double y = static_cast<double>(pt.y);
+        double x = pt.x;
+        double y = pt.y;
         normalize(x, y);
         res.push_back(static_cast<float>(x));
         res.push_back(static_cast<float>(y));
@@ -87,12 +168,13 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
     double mouse_x, mouse_y;
     glfwGetCursorPos(window, &mouse_x, &mouse_y);
     cursor_pos_to_xoy(mouse_x, mouse_y);
-    long long xll = static_cast<long long>(mouse_x);
-    long long yll = static_cast<long long>(mouse_y);
+    double x = mouse_x;
+    double y = mouse_y;
     normalize(mouse_x, mouse_y);
     float xf = static_cast<float>(mouse_x);
     float yf = static_cast<float>(mouse_y);
 
+    std::cout << "mouse clicked at: " << x << " " << y << std::endl;
     if (visi_enabled && !path)
     {
         vertices_visi.clear();
@@ -100,7 +182,10 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         try
         {
             
-            auto data = get_polygon_visibility(polygons, xll, yll);
+            /*auto data = get_polygon_visibility(polygons, x, y);
+            vertices_visi = normalize_data(data);
+            */
+            auto data = get_simple_polygon_visibility(polygons[0], x, y);
             vertices_visi = normalize_data(data);
             test_index ++;
         }
@@ -111,7 +196,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
     }
     else if (visi_enabled && path)
     {
-        path_points.push_back({xll, yll});
+        path_points.push_back({x, y});
         if (path_points.size() > 2)
             path_points.erase(path_points.cbegin());
         if (path_points.size() == 2)
@@ -119,11 +204,17 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             auto p = get_path_ab(path_points[0], path_points[1], polygons, g_visi_graph);
             vertices_path = normalize_data(p);
         }
+        else 
+            vertices_path = normalize_data(path_points);
         //vertices_path = normalize_data(path_points);
     }
     else 
     {
-        polygons[polygon_index].push_back({xll, yll});
+        if (polygons[polygon_index].size() > 0 &&
+            !can_add_edge(polygons[polygon_index][polygons[polygon_index].size() - 1], {x, y}))
+            return;
+
+        polygons[polygon_index].push_back({x, y});
 
         if (vertices.size() - poly_starting_index > 2) 
         {
@@ -144,6 +235,8 @@ void handle_input(GLFWwindow * window)
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !last_space_state)
     {
         last_space_state = true;
+        if (!can_close_polygon())
+            return;
         polygons.push_back({});
         polygon_index ++;
 
@@ -165,11 +258,13 @@ void handle_input(GLFWwindow * window)
     {
         visi_enabled = true;
         polygons.pop_back();
-        auto triangulation = get_triangulation(polygons);
+        /*auto triangulation = get_triangulation(polygons);
+        std::cout << "Get triangulation finished" << std::endl;
         vertices_triangualtion = normalize_data(triangulation);
         g_visi_graph = get_visibility_graph(polygons);
+        std::cout << "Get visibility graph" << std::endl;
         auto verts = g_visi_graph->get_vertices();
-        vertices_graph = normalize_data(verts);
+        vertices_graph = normalize_data(verts);*/
     }
     if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && !last_t_state)
     {
@@ -196,6 +291,19 @@ void handle_input(GLFWwindow * window)
         vertices_path.clear();
         path_points.clear();
     }
+    
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && !last_d_state)
+    {
+        last_d_state = true;
+        polygons.pop_back();
+        auto a = get_degenerate_polygon_b(polygons);
+        degenerate_polygon = normalize_data(a);
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE && last_d_state)
+    {
+        last_d_state = false;
+    }
+    
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
     {
         space_pressed = false;
@@ -216,7 +324,7 @@ void framebuffer_size_callback(GLFWwindow *, int width, int height)
 int test();
 int main(void)
 {
-    //return test();
+    /*return test();*/
     polygons.push_back({});
 
     GLFWwindow* window;
@@ -282,6 +390,10 @@ int main(void)
     vertex_array va_path;
     vertex_buffer vb_path;
     va_path.add_buffer(vb_path, layout);
+
+    vertex_array va_deg;
+    vertex_buffer vb_deg;
+    va_deg.add_buffer(vb_deg, layout);
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -359,6 +471,15 @@ int main(void)
             vb_path.buffer_data(vertices_path.data(), sizeof(float) * vertices_path.size());
             glDrawArrays(GL_POINTS, 0, vertices_path.size() / 2);
         }
+
+        if (degenerate_polygon.size())
+        {
+            program.use();
+            va_deg.bind();
+            vb_deg.bind();
+            vb_deg.buffer_data(degenerate_polygon.data(), sizeof(float) * degenerate_polygon.size());
+            glDrawArrays(GL_LINES, 0, degenerate_polygon.size() / 2);
+        }
         
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
@@ -400,37 +521,16 @@ void afisare(const triangle * tr, bool dual = true)
 
 int test()
 {
-    std::vector<int> v {1, 2, 3, 4, 5, 6};
-    graph<int> g(v);
-    /*g.add_edge(1, 2, 7.0);
-    g.add_edge(1, 3, 9.0);
-    g.add_edge(1, 6, 14.0);
-    g.add_edge(2, 3, 10.0);
-    g.add_edge(2, 4, 15.0);
-    g.add_edge(3, 4, 11.0);
-    g.add_edge(3, 6, 2.0);
-    g.add_edge(4, 5, 6.0);
-    g.add_edge(5, 6, 9.0);
-    g.compute_all_paths();*/
+    
+    std::vector<std::vector<point>> polygons = {
+        {{0.0, 5.0}, {5.0, -5.0}, {-5.0, -5.0}},
+        {{0.0, 4.0}, {-1.0, 2.0}, {1.0, 2.0}},
+        {{-4.0, -4.0}, {-3.0, -3.0}, {-3.0, -4.0}},
+        {{4.0, -4.0}, {3.0, -4.0}, {3.0, -3.0}},
+        {{0.0, -1.0}, {1.0, -2.0}, {-1.0, -2.0}}
+    };
 
-    /*for (int i = 1; i <= 6; ++i)
-    {
-        for (int j = 1; j <= 6; ++ j)
-        {
-            if (i == j)
-                continue;
-
-            auto path = g.get_path(i, j);
-            std::cout << "Path from " << i << " to " << j << " is: ";
-            for (auto& node: path)
-                std::cout << node << " ";
-            std::cout << std::endl;
-        }
-    }*/
-
-    /*auto path = g.get_path(1, 5);
-    for (auto x: path)
-        std::cout << x << std::endl;
-*/
+    auto pt = get_triangulation(polygons);
+    
     return 0;
 }

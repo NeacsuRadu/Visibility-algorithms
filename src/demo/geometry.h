@@ -241,11 +241,11 @@ inline bool point_in_triangle(const point& p, const triangle * t)
 
 inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)
 {
-    std::cout << "point in polygon" << std::endl;
+    //std::cout << "point in polygon" << std::endl;
     if (vertices.size() <= 2)
         return {};
 
-    std::cout << "Polygon: " << std::endl;
+    //std::cout << "Polygon: " << std::endl;
     for (auto& pt: vertices)
         std::cout << pt.x << " " << pt.y << " / ";
     std::cout << std::endl;
@@ -254,23 +254,23 @@ inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)
     unsigned int no_of_intersections = 0;
     for (std::size_t idx = 1; idx < vertices.size(); ++idx)
     {
-        std::cout << "try edge: " << vertices[idx - 1].x << " " << vertices[idx - 1].y << " / " << vertices[idx].x << " " << vertices[idx].y << std::endl;
+        //std::cout << "try edge: " << vertices[idx - 1].x << " " << vertices[idx - 1].y << " / " << vertices[idx].x << " " << vertices[idx].y << std::endl;
         auto inter = get_segments_intersection(vertices[idx - 1], vertices[idx], p, dummy_point);
         if (inter == error_point)
             continue;
 
-        std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
+        //std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
         no_of_intersections ++;
     }
-    std::cout << "try edge: " << vertices[0].x << " " << vertices[0].y << " / " << vertices[vertices.size() - 1].x << " " << vertices[vertices.size() - 1].y << std::endl;
+    //std::cout << "try edge: " << vertices[0].x << " " << vertices[0].y << " / " << vertices[vertices.size() - 1].x << " " << vertices[vertices.size() - 1].y << std::endl;
     auto inter = get_segments_intersection(vertices[0], vertices[vertices.size() - 1], p, dummy_point);
     if (inter != error_point)
     {
-        std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
+        //std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
         no_of_intersections ++;
     }
 
-    std::cout << "Number of intersections: " << no_of_intersections << std::endl;
+    //std::cout << "Number of intersections: " << no_of_intersections << std::endl;
 
     return (no_of_intersections % 2 == 1);
 }

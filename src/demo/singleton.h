@@ -4,14 +4,14 @@ template <typename type>
 class singleton
 {
 public:
-    type& get_instance()
+    static type& get_instance()
     {
         if (!instance)
             instance = new type();
         return *instance;
     }
 
-    void release_instance()
+    static void release_instance()
     {
         if (instance)
         {
@@ -20,5 +20,5 @@ public:
         }
     }
 private:
-    type * instance = nullptr;
+    static type * instance;
 };

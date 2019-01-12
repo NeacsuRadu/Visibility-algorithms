@@ -42,6 +42,18 @@
     <ClCompile Include="polygon_visibility.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="polygon_helpers.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="triangulated_polygon_visibility.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="simple_polygon_visibility.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="roboto.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vertex_buffer_layout.h">
@@ -83,6 +95,21 @@
     <ClInclude Include="singleton.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="polygon_helpers.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="visibility_algorithm.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="simple_polygon_visibility.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="triangulated_polygon_visibility.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="roboto.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\shaders\vertex_shaders\lines.vs">
@@ -90,6 +117,18 @@
     </None>
     <None Include="..\..\shaders\fragment_shaders\lines.fs">
       <Filter>shaders\fragment</Filter>
+    </None>
+    <None Include="..\..\shaders\fragment_shaders\blue.fs">
+      <Filter>shaders\fragment</Filter>
+    </None>
+    <None Include="..\..\shaders\fragment_shaders\gray.fs">
+      <Filter>shaders\fragment</Filter>
+    </None>
+    <None Include="..\..\shaders\fragment_shaders\yellow.fs">
+      <Filter>shaders\fragment</Filter>
+    </None>
+    <None Include="..\..\shaders\vertex_shaders\roboto.vs">
+      <Filter>shaders\vertex</Filter>
     </None>
   </ItemGroup>
 </Project>

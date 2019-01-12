@@ -12,7 +12,7 @@ public:
 
     graph(std::vector<type> nodes)
     {
-		std::cout << "nodes in: " << nodes.size() << std::endl;
+		//std::cout << "nodes in: " << nodes.size() << std::endl;
         auto sz = nodes.size();
         for (std::size_t idx = 0; idx < sz; ++idx)
         {
@@ -21,7 +21,7 @@ public:
             m_edges.push_back({});
             m_paths.push_back(std::vector<path>(sz));
         }
-		std::cout << "nodes out: " << m_nodes.size() << std::endl;
+		//std::cout << "nodes out: " << m_nodes.size() << std::endl;
     }
 
     void add_edge(const type& a, const type& b, double distance)
@@ -38,7 +38,7 @@ public:
             if (e.first == it_b->second)
                 return;
 
-        std::cout << "add edge" << it_a->second << " - " << it_b->second << std::endl;
+        //std::cout << "add edge" << it_a->second << " - " << it_b->second << std::endl;
         m_edges[it_a->second].push_back({it_b->second, distance});
         /*m_edges[it_b->second].push_back({it_a->second, distance});*/
     }
@@ -79,9 +79,9 @@ public:
         auto sz = m_edges.size();
         for (std::size_t idx_i = 0; idx_i < sz - 1; ++idx_i)
         {
-            std::cout << "dij " << std::endl;
+            //std::cout << "dij " << std::endl;
             auto aux = _dijkstra(idx_i);
-            std::cout <<" adij" << std::endl;
+            //std::cout <<" adij" << std::endl;
             /*std::cout << "Dijkstra from " << idx_i << std::endl;
             for (auto& inf: aux)
             {
@@ -90,9 +90,9 @@ public:
             for (std::size_t idx_j = 1; idx_j < sz; ++idx_j)
             {
                 //std::cout << "Path from " << idx_i << " to " << idx_j << " : " << std::endl;
-                std::cout << "get path" << std::endl;
+                //std::cout << "get path" << std::endl;
                 auto path = _get_path(aux, idx_i, idx_j);
-                std::cout << " a get path" << std::endl;
+                //std::cout << " a get path" << std::endl;
                 auto distance = aux[idx_j].second;
                 auto rev_path = std::vector<std::size_t>(path.rbegin(), path.rend());
                 /*for (auto x: path)
@@ -157,15 +157,15 @@ private:
 
         std::priority_queue<info, container, decltype(compare)> queue(compare);
         queue.push({root, 0.0});
-        std::cout << "before loop, size: " << aux.size() << std::endl;
+        //std::cout << "before loop, size: " << aux.size() << std::endl;
         while (!queue.empty())
         {
             auto el = queue.top();
             queue.pop();
-            std::cout << "queue popped, el: " << el.first << std::endl;
+            //std::cout << "queue popped, el: " << el.first << std::endl;
             for (auto& edge: m_edges[el.first])
             {
-                std::cout << "edge: " << edge.first << std::endl;
+                //std::cout << "edge: " << edge.first << std::endl;
                 auto dist = aux[el.first].second + edge.second;
                 if (dist < aux[edge.first].second) 
                 {

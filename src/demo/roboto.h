@@ -8,7 +8,7 @@ public:
     void set_path(const std::vector<point>& path);
     void update();
 
-    inline bool can_render() const { return m_velocity.x != 0.0 && m_velocity.y != 0.0; }
+    inline bool can_render() const { return !m_path.empty(); }
     inline point get_position() const { return m_position; }
 private:
     void _compute_velocity();

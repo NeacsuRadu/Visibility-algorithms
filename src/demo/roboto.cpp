@@ -13,7 +13,7 @@ void roboto::set_path(const std::vector<point>& path)
 
 void roboto::update()
 {
-    if (m_velocity.x == 0.0 && m_velocity.y == 0.0)
+    if (m_path.empty())
         return; 
 
     point upd = {m_position.x + m_velocity.x, m_position.y + m_velocity.y};
@@ -48,6 +48,9 @@ void roboto::_compute_velocity()
     diff.y = pt.y - m_position.y;
 
     m_rem_distance = distance(m_position, pt);
+    //std::cout << "Distance: "  << m_rem_distance << std::endl;
+    if (m_rem_distance == 0.0)
+        m_rem_distance = 2.0;
 
     m_velocity.x = diff.x / (m_rem_distance * 5);
     m_velocity.y = diff.y / (m_rem_distance * 5);

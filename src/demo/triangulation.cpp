@@ -62,15 +62,18 @@ bool is_ear(node<boundary_point> *& node)
     auto it = node->next->next;
     while (it != node->prev)
     {
-        if (it->info.coords == node->info.coords ||
-            it->info.coords == node->prev->info.coords ||
-            it->info.coords == node->next->info.coords)
+        if ((it->info.coords.x == node->info.coords.x && it->info.coords.y == node->info.coords.y) ||
+            (it->info.coords.x == node->prev->info.coords.x && it->info.coords.y == node->prev->info.coords.y) ||
+            (it->info.coords.x == node->next->info.coords.x && it->info.coords.y == node->next->info.coords.y))
         {
             it = it->next;
             continue;
         }
         if (point_in_triangle(node->prev->info.coords, node->info.coords, node->next->info.coords, it->info.coords))
+        {
+            //std::cout << "found point: " << it->info.coords.x << " " << it->info.coords.y << " " << it->info.coords.is_dup << std::endl;
             return false;
+        }
         it = it->next;
     }
     return true;
@@ -79,9 +82,19 @@ bool is_ear(node<boundary_point> *& node)
 
 void triangulation::compute_triangulation(const std::vector<std::vector<point>>& polygons)
 {
+    /*std::cout << "Triangulation: " << std::endl << "[";
+    for (std::size_t i = 0; i < polygons.size(); ++i)
+    {
+        for (std::size_t j = 0; j < polygons[i].size(); ++ j)
+            std::cout << "{\"x\":" << polygons[i][j].x << ",\"y\":" << polygons[i][j].y << "},";
+        std::cout << std::endl;
+    }*/
     m_triangulation.clear();
     _preprocess_polygon(polygons);
 
+    /*for (auto& pt: m_degenerate_polygon)
+        std::cout << pt.x << " " << pt.y << " " << pt.is_dup << std::endl;
+*/
     std::vector<boundary_point> aux;
     for (auto& pt: m_degenerate_polygon)
         aux.push_back({pt});
@@ -105,6 +118,8 @@ void triangulation::compute_triangulation(const std::vector<std::vector<point>>&
     for (auto it: aux)
         list.push_back(it);
 
+
+
     auto list_it = list.get_first();
     while (list_it->next != list.get_first())
     {
@@ -116,7 +131,9 @@ void triangulation::compute_triangulation(const std::vector<std::vector<point>>&
             while (true)
             {
                 if (search_it->info.coords.is_dup && 
-                    search_it->next->info.coords == list_it->info.coords)
+                    search_it->next->info.coords.x == list_it->info.coords.x &&
+                    search_it->next->info.coords.y == list_it->info.coords.y &&
+                    search_it->next->info.coords.is_dup != list_it->info.coords.is_dup)
                     break;
                 search_it = search_it->next;
             }
@@ -128,11 +145,12 @@ void triangulation::compute_triangulation(const std::vector<std::vector<point>>&
         list_it = list_it->next;
     }
 
+    //std::cout << "starting to triangulate" << std::endl;
     int no_of_triangles = size - 3;
     node<boundary_point> * it = list.get_first();
     while (no_of_triangles > 0)
     {
-        //std::cout << "loop" << std::endl;
+        //std::cout << "checking: " << it->info.coords.x << " " << it->info.coords.y << " " << it->info.coords.is_dup << std::endl;
         //std::cout << "LOOP" << std::endl;
         if (test_orientation(it->prev->info.coords, it->info.coords,  it->next->info.coords) == orientation::left &&
             is_ear(it))
@@ -160,10 +178,22 @@ void triangulation::compute_triangulation(const std::vector<std::vector<point>>&
 
             set_triangle_to_edges(tri);
 
+            //std::cout << "remove point: " << it->info.coords.x << " " << it->info.coords.y << std::endl;
             it = list.remove(it);
 
             m_triangulation.push_back(tri);
             -- no_of_triangles;
+
+            
+            auto ittt = list.get_first();
+            /*std::cout << "[";
+            do
+            {
+                std::cout << "{\"x\":" << ittt->info.coords.x << ",\"y\":" << ittt->info.coords.y << "},";
+                ittt = ittt->next;
+            } while (ittt != list.get_first());
+            std::cout << std::endl;*/
+
             continue;
         }
 
@@ -183,7 +213,10 @@ void triangulation::_preprocess_polygon(const std::vector<std::vector<point>>& p
     /* counter clockwise order for the polygon */
     m_polygons = p;
     if (!is_counter_clockwise(m_polygons[0]))
+    {
+        //std::cout << "REVERT" << std::endl;
         revert_order(m_polygons[0]);
+    }
 
     /* clockwise order for the holes */
     for (std::size_t idx = 1; idx < m_polygons.size(); ++ idx)
@@ -210,8 +243,13 @@ void triangulation::_compute_degenerate_polygon()
             std::vector<bridge_edge> bridge_edges;
             for (std::size_t idx_dp = 0; idx_dp < m_degenerate_polygon.size(); ++ idx_dp)
                 for (std::size_t idx_h = 0; idx_h < hole.size(); ++ idx_h)
+                {
+                    if (m_degenerate_polygon[idx_dp].is_deg)
+                        continue;
+
                     bridge_edges.push_back({idx_dp, idx_h,
                         distance(m_degenerate_polygon[idx_dp], hole[idx_h])});
+                }
 
             /* sort all bridge edges ascending using the distance */
             std::sort(bridge_edges.begin(), bridge_edges.end(),
@@ -234,6 +272,9 @@ void triangulation::_compute_degenerate_polygon()
                 continue;
 
             auto& e = bridge_edges[idx_edge];
+            m_degenerate_polygon[e.index_polygon].is_deg = true;
+            hole[e.index_hole].is_deg = true;
+
             std::vector<point> aux;
             aux.insert(aux.end(), m_degenerate_polygon.begin(), m_degenerate_polygon.begin() + e.index_polygon + 1);
             aux[aux.size() - 1].is_dup = true;

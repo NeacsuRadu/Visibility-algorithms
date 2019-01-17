@@ -28,6 +28,7 @@ struct point
     double x = 0.0;
     double y = 0.0;
     bool is_dup = false;
+    bool is_deg = false;
 };
 
 struct compare_pt 
@@ -83,7 +84,7 @@ inline triangle * get_triangle(const point& a, const point& b, const point& c)
 static point error_point = {-99999.0, -99999.0};
 inline bool operator == (const point& p, const point& q)
 {
-    return p.x == q.x && p.y == q.y;
+    return p.x == q.x && p.y == q.y && p.is_dup == q.is_dup;
 }
 
 inline bool operator != (const point& p, const point& q)
@@ -246,9 +247,9 @@ inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)
         return {};
 
     //std::cout << "Polygon: " << std::endl;
-    for (auto& pt: vertices)
+    /*for (auto& pt: vertices)
         std::cout << pt.x << " " << pt.y << " / ";
-    std::cout << std::endl;
+    std::cout << std::endl;*/
 
     point dummy_point {p.x, 2000.0};
     unsigned int no_of_intersections = 0;

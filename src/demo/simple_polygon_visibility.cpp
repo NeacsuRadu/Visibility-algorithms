@@ -12,6 +12,7 @@ void simple_polygon_visibility::preprocess_polygons(const std::vector<std::vecto
 
 std::vector<triangle*> simple_polygon_visibility::get_visibility(const point& view)
 {
+    //std::cout << "get_visibility" << std::endl;
     if (!point_in_polygon(m_polygon, view))
         return {};
 
@@ -23,7 +24,7 @@ std::vector<triangle*> simple_polygon_visibility::get_visibility(const point& vi
     st.pop();
     while (!st.empty())
     {
-        std::cout << "point: " << crr.x << " " << crr.y << std::endl;
+        //std::cout << "point: " << crr.x << " " << crr.y << std::endl;
         result.push_back(get_triangle(view, st.top().pt, crr));
         crr = st.top().pt;
         st.pop();
@@ -66,10 +67,11 @@ void simple_polygon_visibility::_shift_polygon_points(const point& view)
 
 std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_get_visibility_stack(const point& view)
 {
-    int idx = 1;
+    int idx = 0;
     int sz = m_polygon.size();
     std::stack<stack_data> st;
-    st.push({m_polygon[0], true, 0});
+    auto v0 = get_lines_intersection(view, {1000.0, view.y}, m_polygon[sz - 1], m_polygon[0]);
+    st.push({v0, false, index(-1, sz)});
     while (idx < sz)
     {
         if (test_orientation(view, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]) != orientation::right)

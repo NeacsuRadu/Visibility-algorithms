@@ -151,6 +151,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="algorithms.cpp" />
+    <ClCompile Include="button.cpp" />
     <ClCompile Include="index_buffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="polygon_helpers.cpp" />
@@ -158,6 +159,7 @@
     <ClCompile Include="roboto.cpp" />
     <ClCompile Include="shader_program.cpp" />
     <ClCompile Include="simple_polygon_visibility.cpp" />
+    <ClCompile Include="stb_image.cpp" />
     <ClCompile Include="triangulated_polygon_visibility.cpp" />
     <ClCompile Include="triangulation.cpp" />
     <ClCompile Include="vertex_array.cpp" />
@@ -166,16 +168,19 @@
   <ItemGroup>
     <ClInclude Include="algorithm.h" />
     <ClInclude Include="algorithms.h" />
+    <ClInclude Include="button.h" />
     <ClInclude Include="circular_list.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="index_buffer.h" />
+    <ClInclude Include="io_opeartions.h" />
     <ClInclude Include="polygon_helpers.h" />
     <ClInclude Include="polygon_visibility.h" />
     <ClInclude Include="roboto.h" />
     <ClInclude Include="shader_program.h" />
     <ClInclude Include="simple_polygon_visibility.h" />
     <ClInclude Include="singleton.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="triangulated_polygon_visibility.h" />
     <ClInclude Include="triangulation.h" />
     <ClInclude Include="vertex_array.h" />
@@ -187,9 +192,11 @@
     <None Include="..\..\shaders\fragment_shaders\blue.fs" />
     <None Include="..\..\shaders\fragment_shaders\gray.fs" />
     <None Include="..\..\shaders\fragment_shaders\lines.fs" />
+    <None Include="..\..\shaders\fragment_shaders\texture.fs" />
     <None Include="..\..\shaders\fragment_shaders\yellow.fs" />
     <None Include="..\..\shaders\vertex_shaders\lines.vs" />
     <None Include="..\..\shaders\vertex_shaders\roboto.vs" />
+    <None Include="..\..\shaders\vertex_shaders\texture.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

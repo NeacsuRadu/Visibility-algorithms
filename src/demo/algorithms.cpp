@@ -54,7 +54,7 @@ graph<point, compare_pt> * get_visibility_graph(std::vector<std::vector<point>>&
     for (std::size_t i = 0; i < sz; ++i)
         nodes.insert(nodes.end(), points[i].begin(), points[i].end());
     //std::cout << "no nodes: " << nodes.size() << std::endl;
-    std::cout << "no nodes: " << nodes.size() << std::endl;
+    //std::cout << "no nodes: " << nodes.size() << std::endl;
     graph<point, compare_pt> * g = new graph<point, compare_pt>(nodes);
 
     for (std::size_t i = 0; i < sz; ++i)
@@ -68,7 +68,7 @@ graph<point, compare_pt> * get_visibility_graph(std::vector<std::vector<point>>&
         }
     }
 
-    std::cout << "Before compute all paths" << std::endl;
+    //std::cout << "Before compute all paths" << std::endl;
     g->compute_all_paths();
     return g;
 }

@@ -10,6 +10,7 @@
 #include "triangulation.h"
 #include "triangulated_polygon_visibility.h"
 #include "simple_polygon_visibility.h"
+#include "intersection_visibility.h"
 #include "roboto.h"
 #include "io_opeartions.h"
 #include "button.h"
@@ -17,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <chrono>
 
 button * g_close_polygon_button = nullptr;
 button * g_run_button           = nullptr;
@@ -276,10 +278,19 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         visi_enabled = true;
         polygons.pop_back();
         if (run_type == "simple")
-            simple_polygon_visibility::get_instance().preprocess_polygons(polygons);
-        else // run_type == "triangulated"
         {
+            auto begin = std::chrono::high_resolution_clock::now();
+            simple_polygon_visibility::get_instance().preprocess_polygons(polygons);
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+        }
+        else if (run_type == "triangulated")
+        {
+            auto begin = std::chrono::high_resolution_clock::now();
             triangulation::get_instance().compute_triangulation(polygons);
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+
             auto triangles = triangulation::get_instance().get_triangulation();
             auto triangulation_points = triangles_to_points(triangles);
             vertices_triangualtion = normalize_data(triangulation_points);
@@ -292,6 +303,13 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             //std::cout << "Get visibility graph" << std::endl;
             auto verts = g_visi_graph->get_vertices();
             vertices_graph = normalize_data(verts);
+        }
+        else
+        {
+            auto begin = std::chrono::high_resolution_clock::now();
+            intersect_visibility::get_instance().preprocess_polygons(polygons);
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
         }
         run_pressed = true;
         return;
@@ -337,10 +355,16 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         try
         {
             std::vector<triangle*> tris;
+            auto begin = std::chrono::high_resolution_clock::now();
             if (run_type == "simple")
                 tris = simple_polygon_visibility::get_instance().get_visibility({x, y});
-            else // triangulated
+            else if (run_type == "triangulated")// triangulated
                 tris = triangulated_polygon_visibility::get_instance().get_visibility({x, y});
+            else 
+                tris = intersect_visibility::get_instance().get_visibility({x ,y});
+            auto end = std::chrono::high_resolution_clock::now();
+            auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            std::cout << "Visibility time: " << time << std::endl;
             auto pts = triangles_to_points(tris);
             vertices_visi = normalize_data(pts);
         }
@@ -351,7 +375,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
     }
     else if (visi_enabled && path_algorithm)
     {
-        if (run_type == "simple")
+        if (run_type != "triangulated")
             return;
 
         if (rob.can_render()) // cannot click while the animation is on the screen
@@ -465,6 +489,7 @@ int main(int argc, char * argv[])
     triangulation::get_instance();
     triangulated_polygon_visibility::get_instance();
     simple_polygon_visibility::get_instance();
+    intersect_visibility::get_instance();
 
     polygon_index = polygons.size() - 1;
     for (std::size_t idx = 0; idx < polygons.size() - 1; ++ idx)
@@ -729,6 +754,7 @@ int main(int argc, char * argv[])
     destry_buttons();
     glfwTerminate();
 
+    intersect_visibility::release_instance();
     simple_polygon_visibility::release_instance();
     triangulated_polygon_visibility::release_instance();
     triangulation::release_instance();

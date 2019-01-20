@@ -25,7 +25,7 @@ inline bool parse_input_param(const std::string& arg, std::vector<std::vector<po
     if (!js_type.is_string())
         return false;
     type = js_type.get<std::string>();
-    if (type != "simple" && type != "triangulated")
+    if (type != "simple" && type != "triangulated" && type != "intersect")
         return false;
 
     auto& js_polygon = js.at("polygon");

@@ -2,6 +2,9 @@
 #include "singleton.h"
 #include "visibility_algorithm.h"
 
+#include <stack>
+#include <vector>
+
 class triangulated_polygon_visibility:
     public singleton<triangulated_polygon_visibility>,
     public visibility_algorithm
@@ -16,4 +19,15 @@ private:
     void _get_visibility_from_vertex(const std::vector<triangle*>& tris, const point& view, std::vector<triangle*>& visi);
     void _get_visibility_through_edge(const point& view, const point& left, const point& right, const edge * e, std::vector<triangle*>& vs);
     void _get_visibility_through_edge(const point& view, const point& left, const point& right, const edge * e, std::vector<point>& vertices);
+
+    struct stack_data
+    {
+        point view;
+        point left;
+        point right;
+        const edge * e = nullptr;
+    };
+
+    std::vector<triangle*> m_visibility;
+    std::stack<stack_data> m_stack;
 };

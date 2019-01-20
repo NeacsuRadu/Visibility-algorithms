@@ -60,6 +60,9 @@
     <ClCompile Include="button.cpp">
       <Filter>source</Filter>
     </ClCompile>
+    <ClCompile Include="intersection_visibility.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vertex_buffer_layout.h">
@@ -123,6 +126,9 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="stb_image.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="intersection_visibility.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>

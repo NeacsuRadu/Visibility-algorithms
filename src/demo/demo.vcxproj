@@ -153,6 +153,7 @@
     <ClCompile Include="algorithms.cpp" />
     <ClCompile Include="button.cpp" />
     <ClCompile Include="index_buffer.cpp" />
+    <ClCompile Include="intersection_visibility.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="polygon_helpers.cpp" />
     <ClCompile Include="polygon_visibility.cpp" />
@@ -173,6 +174,7 @@
     <ClInclude Include="geometry.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="index_buffer.h" />
+    <ClInclude Include="intersection_visibility.h" />
     <ClInclude Include="io_opeartions.h" />
     <ClInclude Include="polygon_helpers.h" />
     <ClInclude Include="polygon_visibility.h" />

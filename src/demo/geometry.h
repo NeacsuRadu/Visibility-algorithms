@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+
 enum class orientation: int
 {
     right = -1,
@@ -100,6 +101,29 @@ inline bool operator == (const edge& e1, const edge& e2)
 inline bool operator != (const edge& e1, const edge& e2)
 {
     return !(e1 == e2);
+}
+
+inline double angleo(const point& p) // origin referenced
+{
+    const double pi = std::acos(-1);
+    if (p.x > 0)
+    {
+        if (p.y >= 0)
+            return std::atan(p.y / p.x);
+        else 
+            return std::atan(p.y / p.x) + 2 * pi;
+    }
+    else if (p.x == 0)
+    {
+        if (p.y > 0)
+            return pi / 2;
+        else if (p.y < 0)
+            return 3 * pi / 2;
+        else 
+            throw std::runtime_error("");
+    }
+    else 
+        return std::atan(p.y / p.x) + pi;
 }
 
 struct vertex 
@@ -257,7 +281,7 @@ inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)
     {
         //std::cout << "try edge: " << vertices[idx - 1].x << " " << vertices[idx - 1].y << " / " << vertices[idx].x << " " << vertices[idx].y << std::endl;
         auto inter = get_segments_intersection(vertices[idx - 1], vertices[idx], p, dummy_point);
-        if (inter == error_point)
+        if (inter == error_point || inter == vertices[idx])
             continue;
 
         //std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
@@ -265,7 +289,7 @@ inline bool point_in_polygon(const std::vector<point>& vertices, const point& p)
     }
     //std::cout << "try edge: " << vertices[0].x << " " << vertices[0].y << " / " << vertices[vertices.size() - 1].x << " " << vertices[vertices.size() - 1].y << std::endl;
     auto inter = get_segments_intersection(vertices[0], vertices[vertices.size() - 1], p, dummy_point);
-    if (inter != error_point)
+    if (inter != error_point && inter != vertices[0])
     {
         //std::cout << "edge intersects in " << inter.x << " " << inter.y << std::endl;
         no_of_intersections ++;

@@ -3,8 +3,12 @@
 
 triangulated_polygon_visibility * singleton<triangulated_polygon_visibility>::instance = nullptr;
 
+extern std::string run_type;
+
 std::vector<triangle*> triangulated_polygon_visibility::get_visibility(const point& view)
 {
+    m_display_data_steps.clear();
+
     position pos = position::interior;
     auto tri = _get_triangles_containing_point(view, pos);
     if (tri.size() == 0)
@@ -16,16 +20,19 @@ std::vector<triangle*> triangulated_polygon_visibility::get_visibility(const poi
         if (tri.size() > 1)
             throw std::runtime_error("interior point contained by more than one triangle");
 
+        _save_step({view, tri[0]->e1->a, tri[0]->e1->b}, get_triangle(view, tri[0]->e1->a, tri[0]->e1->b));
         if (tri[0]->e1->dual)
             _get_visibility_through_edge(view, tri[0]->e1->b, tri[0]->e1->a, tri[0]->e1->dual, visibility);
         else 
             visibility.push_back(get_triangle(view, tri[0]->e1->a, tri[0]->e1->b));
 
+        _save_step({view, tri[0]->e2->a, tri[0]->e2->b}, get_triangle(view, tri[0]->e2->a, tri[0]->e2->b));
         if (tri[0]->e2->dual)
             _get_visibility_through_edge(view, tri[0]->e2->b, tri[0]->e2->a, tri[0]->e2->dual, visibility);
         else
             visibility.push_back(get_triangle(view, tri[0]->e2->a, tri[0]->e2->b));
 
+        _save_step({view, tri[0]->e3->a, tri[0]->e3->b}, get_triangle(view, tri[0]->e3->a, tri[0]->e3->b));
         if (tri[0]->e3->dual)
             _get_visibility_through_edge(view, tri[0]->e3->b, tri[0]->e3->a, tri[0]->e3->dual, visibility);
         else
@@ -36,6 +43,7 @@ std::vector<triangle*> triangulated_polygon_visibility::get_visibility(const poi
     else // pos == position::point
         _get_visibility_from_vertex(tri, view, visibility);
 
+    m_display_data_steps.push_back({visibility, {view}});
     return visibility;
 }
 
@@ -131,11 +139,13 @@ void triangulated_polygon_visibility::_get_visibility_from_line(const std::vecto
             e2 = t->e2;
         }
 
+        _save_step({view, e1->a, e1->b}, get_triangle(view, e1->a, e1->b));
         if (e1->dual)
             _get_visibility_through_edge(view, e1->b, e1->a, e1->dual, visi);
         else 
             visi.push_back(get_triangle(view, e1->a ,e1->b));
 
+        _save_step({view, e2->a, e2->b}, get_triangle(view, e2->a, e2->b));
         if (e2->dual)
             _get_visibility_through_edge(view, e2->b, e2->a, e2->dual, visi);
         else
@@ -155,6 +165,7 @@ void triangulated_polygon_visibility::_get_visibility_from_vertex(const std::vec
         else 
             e = t->e1;
 
+        _save_step({view, e->a, e->b}, get_triangle(view, e->a, e->b));
         if (e->dual)
             _get_visibility_through_edge(view, e->b, e->a, e->dual, visibility);
         else 
@@ -188,43 +199,38 @@ void triangulated_polygon_visibility::_get_visibility_through_edge(const point& 
     if (test_orientation(view, right, p) != orientation::left)
     {
         auto int_right = get_lines_intersection(view, right, e2->a, e2->b);
+        auto int_left = get_lines_intersection(view, left, e2->a, e2->b);
+        _save_step({view, int_left, int_right}, get_triangle(view, int_right, int_left));
         if (e2->dual)
             _get_visibility_through_edge(view, left, int_right, e2->dual, vs);
         else
-        {
-            auto int_left = get_lines_intersection(view, left, e2->a, e2->b);
             vs.push_back(get_triangle(view, int_right, int_left));
-        }
     }
     else if (test_orientation(view, left, p) == orientation::right)
     {
+        auto int_right = get_lines_intersection(view, right, e1->a, e1->b);
+        _save_step({view, e1->b, int_right}, get_triangle(view, int_right, e1->b));
         if (e1->dual)
             _get_visibility_through_edge(view, e1->b, right, e1->dual, vs);
         else
-        {
-            auto inter = get_lines_intersection(view, right, e1->a, e1->b);
-            vs.push_back(get_triangle(view, inter, e1->b));
-        }
+            vs.push_back(get_triangle(view, int_right, e1->b));
 
+        auto int_left = get_lines_intersection(view, left, e2->a, e2->b);
+        _save_step({view, int_left, e2->a}, get_triangle(view, e2->a, int_left));
         if (e2->dual)
             _get_visibility_through_edge(view, left, e2->a, e2->dual, vs);
         else
-        {
-            auto inter = get_lines_intersection(view, left, e2->a, e2->b);
-            vs.push_back(get_triangle(view, e2->a, inter));
-        }
+            vs.push_back(get_triangle(view, e2->a, int_left));
     }
     else // view, left, p != orientation::right
     {
         auto int_left = get_lines_intersection(view, left, e1->a, e1->b);
+        auto int_right = get_lines_intersection(view, right, e1->a, e1->b);
+        _save_step({view, int_left, int_right}, get_triangle(view, int_right, int_left));
         if (e1->dual)
             _get_visibility_through_edge(view, int_left, right, e1->dual, vs);
-        else
-        {
-            auto int_right = get_lines_intersection(view, right, e1->a, e1->b);
+        else            
             vs.push_back(get_triangle(view, int_right, int_left));
-
-        }
     }
 }
 
@@ -253,4 +259,20 @@ std::vector<triangle*> triangulated_polygon_visibility::_get_triangles_containin
     }
 
     return res;
+}
+
+void triangulated_polygon_visibility::_save_step(const std::vector<point>& points, triangle * tri)
+{
+    if (run_type != "step")
+        return;
+
+    if (m_display_data_steps.size() == 0)
+    {
+        m_display_data_steps.push_back({{tri}, points});
+        return;
+    }
+
+    auto last_visi = m_display_data_steps[m_display_data_steps.size() - 1].m_triangles;
+    last_visi.push_back(tri);
+    m_display_data_steps.push_back({last_visi, points});
 }

@@ -139,7 +139,6 @@ private:
 
     std::vector<std::pair<std::size_t, double>> _dijkstra(std::size_t root)
     {
-        // data for priority q, custom compare
         using info = std::pair<std::size_t, double>;
         using container = std::vector<info>;
         auto compare = [](const info& a, const info& b) -> bool {
@@ -157,15 +156,12 @@ private:
 
         std::priority_queue<info, container, decltype(compare)> queue(compare);
         queue.push({root, 0.0});
-        //std::cout << "before loop, size: " << aux.size() << std::endl;
         while (!queue.empty())
         {
             auto el = queue.top();
             queue.pop();
-            //std::cout << "queue popped, el: " << el.first << std::endl;
             for (auto& edge: m_edges[el.first])
             {
-                //std::cout << "edge: " << edge.first << std::endl;
                 auto dist = aux[el.first].second + edge.second;
                 if (dist < aux[edge.first].second) 
                 {

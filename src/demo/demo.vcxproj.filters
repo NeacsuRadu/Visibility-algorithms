@@ -157,5 +157,8 @@
     <None Include="..\..\shaders\vertex_shaders\texture.vs">
       <Filter>shaders\vertex</Filter>
     </None>
+    <None Include="..\..\shaders\fragment_shaders\red.fs">
+      <Filter>shaders\fragment</Filter>
+    </None>
   </ItemGroup>
 </Project>

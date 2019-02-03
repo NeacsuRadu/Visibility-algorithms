@@ -1,5 +1,6 @@
 {
-    "type": "triangulated",
+	"used_algorithm": "triangulated",
+	"run_type": "full",
     "polygon":[],
-    "holes":[]
+	"holes":[]
 }

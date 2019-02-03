@@ -3,6 +3,8 @@
 
 simple_polygon_visibility * singleton<simple_polygon_visibility>::instance = nullptr;
 
+extern std::string run_type;
+
 void simple_polygon_visibility::preprocess_polygons(const std::vector<std::vector<point>>& polygons)
 {
     m_polygon = polygons[0];
@@ -12,7 +14,7 @@ void simple_polygon_visibility::preprocess_polygons(const std::vector<std::vecto
 
 std::vector<triangle*> simple_polygon_visibility::get_visibility(const point& view)
 {
-    //std::cout << "get_visibility" << std::endl;
+    m_display_data_steps.clear();
     if (!point_in_polygon(m_polygon, view))
         return {};
 
@@ -24,7 +26,6 @@ std::vector<triangle*> simple_polygon_visibility::get_visibility(const point& vi
     st.pop();
     while (!st.empty())
     {
-        //std::cout << "point: " << crr.x << " " << crr.y << std::endl;
         result.push_back(get_triangle(view, st.top().pt, crr));
         crr = st.top().pt;
         st.pop();
@@ -72,21 +73,24 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
     std::stack<stack_data> st;
     auto v0 = get_lines_intersection(view, {1000.0, view.y}, m_polygon[sz - 1], m_polygon[0]);
     st.push({v0, false, index(-1, sz)});
+    _save_stack({v0}, view, st);
     while (idx < sz)
     {
         if (test_orientation(view, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]) != orientation::right)
         {
-            std::cout << "vertex is to the left of the previous one, push" << std::endl;
+            //std::cout << "vertex is to the left of the previous one, push" << std::endl;
             st.push({m_polygon[index(idx, sz)], true, idx});
             idx ++;
+            _save_stack({st.top().pt}, view, st);
             continue;
         }
 
-        std::cout << "vertex is to the right of the previous one" << std::endl;
+        //std::cout << "vertex is to the right of the previous one" << std::endl;
         if (test_orientation(m_polygon[index(idx - 2, sz)], m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]) == orientation::right)
         {
-            std::cout << "vertex is to the right of the -2 -1 line" << std::endl;
+            //std::cout << "vertex is to the right of the -2 -1 line" << std::endl;
             point curr = m_polygon[index(idx - 1, sz)];
+            _save_stack({m_polygon[index(idx, sz)]}, view, st);
             idx ++;
             while (idx <= sz)
             {
@@ -94,29 +98,34 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
                 if (intersect != error_point && 
                     point_between_segment_vertices(intersect, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]))
                 {
+                    _save_stack({m_polygon[index(idx, sz)]}, view, st);
+                    _save_stack({intersect, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]}, view, st);
                     st.push({intersect, false, idx - 1});
                     st.push({m_polygon[index(idx, sz)], true, idx});
+                    _save_stack({intersect, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]}, view, st);
                     break;
                 }
                 idx ++;
+                _save_stack({m_polygon[index(idx - 1, sz)]}, view, st);
             }
             idx ++;
         }
         else 
         {
-            std::cout << "vertex is to the left of -2 -1 line" << std::endl;
+            //std::cout << "vertex is to the left of -2 -1 line" << std::endl;
             point f1 = m_polygon[index(idx - 1, sz)]; // forward edge
             point f2 = m_polygon[index(idx, sz)];
             while (!st.empty())
             {
                 auto data = st.top();
+                _save_stack({f1, f2, data.pt}, view, st);
                 auto intersection = get_segments_intersection(f1, f2, view, data.pt);
                 if (intersection == error_point)
                 {
                     auto ori = test_orientation(view, m_polygon[index(idx, sz)], m_polygon[index(idx + 1, sz)]);
                     if (ori == orientation::right)
                     {
-                        std::cout << "idx + 1 is to the right of q idx " << std::endl;
+                       // std::cout << "idx + 1 is to the right of q idx " << std::endl;
                         f1 = f2;
                         f2 = m_polygon[index(idx + 1, sz)];
                         idx ++;
@@ -126,23 +135,25 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
                     {
                         if (test_orientation(f1, f2, m_polygon[index(idx + 1, sz)]) == orientation::right)
                         {
-                            std::cout << "idx + 1 is to the right of idx - 1 idx " << std::endl;
+                           // std::cout << "idx + 1 is to the right of idx - 1 idx " << std::endl;
                             auto m = get_lines_intersection(view, f2, data.pt, m_polygon[index(data.index + 1, sz)]);
                             if (m == error_point)
                                 throw std::runtime_error("lines do not intersect, error");
 
                             st.push({m, false, data.index});
                             st.push({f2, true, idx});
+                            _save_stack({m, f1, f2, data.pt}, view, st);
                             idx ++;
                             break;
                         }
                         else 
                         {
-                            std::cout << "idx + 1 is to the left of idx - 1 idx " << std::endl;
+                            //std::cout << "idx + 1 is to the left of idx - 1 idx " << std::endl;
                             idx ++;
                             while (idx < sz)
                             {
                                 //std::cout << "while" << std::endl;
+                                _save_stack({f1, f2, m_polygon[index(idx, sz)], m_polygon[index(idx + 1, sz)]}, view, st);
                                 intersection = get_lines_intersection(view, f2, m_polygon[index(idx, sz)], m_polygon[index(idx + 1, sz)]);
                                 if (intersection != error_point &&
                                     point_between_segment_vertices(intersection, m_polygon[index(idx, sz)], m_polygon[index(idx + 1, sz)]))
@@ -159,6 +170,7 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
                 }
                 else
                 {
+                    
                     if (data.is_vertex)
                     {
                         //std::cout << "stack popped" << std::endl;
@@ -169,21 +181,29 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
                         st.pop();
                         if (point_between_segment_vertices(intersection, data.pt, st.top().pt))
                         {
+                            _save_stack({f1, f2, data.pt, st.top().pt, intersection}, view, st);
                             idx ++;
                             while (idx < sz)
                             {
+                                _save_stack({st.top().pt, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]}, view, st);
                                 point z = get_lines_intersection(intersection, st.top().pt, m_polygon[index(idx, sz)], m_polygon[index(idx - 1, sz)]);
                                 if (z != error_point &&
                                     point_between_segment_vertices(z, m_polygon[index(idx, sz)], m_polygon[index(idx - 1, sz)]))
                                 {
+                                    _save_stack({st.top().pt, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)], z}, view, st);
                                     st.push({z, false, idx - 1});
                                     st.push({m_polygon[index(idx, sz)], true, idx});
                                     idx++;
+                                    _save_stack({m_polygon[index(idx - 1, sz)], z}, view, st);
                                     break;
                                 }
                                 idx ++;
                             }
                             break;
+                        }
+                        else if (point_between_segment_vertices(st.top().pt, intersection, data.pt))
+                        {
+                            _save_stack({f1, f2, data.pt, st.top().pt, intersection}, view, st);
                         }
                     }
                 }
@@ -191,5 +211,32 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
         }
     }
 
+    _save_stack({}, view, st, true);
     return st;
+}
+
+void simple_polygon_visibility::_save_stack(const std::vector<point>& points, const point& view, std::stack<stack_data> st, bool last_step)
+{
+    if (run_type != "step")
+        return;
+
+    std::vector<triangle *> aux;
+    if (st.size() >= 2)
+    {
+        auto first = st.top().pt;
+        auto last = st.top().pt;
+        st.pop();
+        while (!st.empty())
+        {
+            aux.push_back(get_triangle(view, st.top().pt, last));
+            last = st.top().pt;
+            st.pop();
+        }
+        if (last_step)
+            aux.push_back(get_triangle(view, first, last));
+    }
+
+    auto pts = points;
+    pts.push_back(view);
+    m_display_data_steps.push_back({aux, pts});
 }

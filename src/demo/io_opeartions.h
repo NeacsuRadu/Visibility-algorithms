@@ -5,7 +5,7 @@
 
 #include <fstream>
 
-inline bool parse_input_param(const std::string& arg, std::vector<std::vector<point>>& polygons, std::string& type)
+inline bool parse_input_param(const std::string& arg, std::vector<std::vector<point>>& polygons, std::string& algorithm, std::string& run_type)
 {
     std::ifstream in(arg);
     if (!in.is_open())
@@ -21,17 +21,26 @@ inline bool parse_input_param(const std::string& arg, std::vector<std::vector<po
     if (!js.is_object())
         return false;
 
-    auto& js_type = js.at("type");
+    auto& js_alg = js.at("used_algorithm");
+    if (!js_alg.is_string())
+        return false;
+    algorithm = js_alg.get<std::string>();
+    if (algorithm != "simple" && algorithm != "triangulated" && algorithm != "intersect")
+        return false;
+
+    auto& js_type = js.at("run_type");
     if (!js_type.is_string())
         return false;
-    type = js_type.get<std::string>();
-    if (type != "simple" && type != "triangulated" && type != "intersect")
+    run_type = js_type.get<std::string>();
+    if (run_type != "full" && run_type != "step")
         return false;
 
     auto& js_polygon = js.at("polygon");
     if (!js_polygon.is_array())
         return false;
 
+    auto no = js_polygon.size();
+    std::cout << "number of points: " << js_polygon.size() << std::endl;
     if (js_polygon.size() == 0)
     {
         polygons.push_back({});
@@ -47,7 +56,7 @@ inline bool parse_input_param(const std::string& arg, std::vector<std::vector<po
         polygons[0].push_back({js_point["x"], js_point["y"]});
     }
 
-    if (type == "simple")
+    if (algorithm == "simple")
     {
         polygons.push_back({});
         return true;
@@ -65,6 +74,8 @@ inline bool parse_input_param(const std::string& arg, std::vector<std::vector<po
         if (!js_hole.is_array())
             return false;
 
+        no += js_hole.size();
+        std::cout << "number of points: " << js_hole.size() << std::endl;
         for (auto& js_point: js_hole)
         {
             if (!js_point.is_object())
@@ -74,6 +85,7 @@ inline bool parse_input_param(const std::string& arg, std::vector<std::vector<po
         }
     }
     polygons.push_back({});
+    std::cout << "pts:  " << no << std::endl;
 
     return true;
 }

@@ -27,10 +27,13 @@ button * g_degenerate_button    = nullptr;
 button * g_graph_button         = nullptr;
 button * g_path_button          = nullptr;
 button * g_visibility_button    = nullptr;
+button * g_next_button          = nullptr;
+button * g_prev_button          = nullptr;
 
 int WINDOW_WIDTH  = 640;
 int WINDOW_HEIGHT = 480;
 
+std::string used_algorithm; // simple / triangulated / intersect
 std::string run_type;
 
 bool run_pressed = false;
@@ -69,6 +72,12 @@ std::vector<float>        degenerate_polygon;
 std::vector<float>        polygon_triangles;
 std::vector<float>        holes_triangles;
 
+
+// step by step display data
+int step = -1;
+std::vector<float>        vertices_points_step;
+std::vector<float>        vertices_triangles_step;
+std::vector<display_data> display_data_steps;
 
 graph<point, compare_pt> * g_visi_graph = nullptr;
 
@@ -216,6 +225,34 @@ bool point_in_polygon(const point& pt)
     return false;
 }
 
+void set_step_data()
+{
+    auto pts = triangles_to_points(display_data_steps[step].m_triangles);
+    vertices_triangles_step = normalize_data(pts);
+
+    vertices_points_step = normalize_data(display_data_steps[step].m_points);
+}
+
+void next_step()
+{
+    std::cout << "next step" << std::endl;
+    if (step == display_data_steps.size() - 1)
+        return;
+
+    step++;
+    set_step_data();
+}
+
+void prev_step()
+{
+    std::cout << "prev step" << std::endl;
+    if (step <= 0)
+        return;
+
+    step --;
+    set_step_data();
+}
+
 void mouse_button_callback(GLFWwindow * window, int button, int action, int mods)
 {
     if (button != GLFW_MOUSE_BUTTON_LEFT)
@@ -277,19 +314,21 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         write_points(polygons);
         visi_enabled = true;
         polygons.pop_back();
-        if (run_type == "simple")
+        if (used_algorithm == "simple")
         {
             auto begin = std::chrono::high_resolution_clock::now();
             simple_polygon_visibility::get_instance().preprocess_polygons(polygons);
             auto end = std::chrono::high_resolution_clock::now();
-            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms, "
+                << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() <<  " ns" << std::endl;
         }
-        else if (run_type == "triangulated")
+        else if (used_algorithm == "triangulated")
         {
             auto begin = std::chrono::high_resolution_clock::now();
             triangulation::get_instance().compute_triangulation(polygons);
             auto end = std::chrono::high_resolution_clock::now();
-            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms, "
+                << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() <<  " ns" << std::endl;
 
             auto triangles = triangulation::get_instance().get_triangulation();
             auto triangulation_points = triangles_to_points(triangles);
@@ -309,12 +348,13 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             auto begin = std::chrono::high_resolution_clock::now();
             intersect_visibility::get_instance().preprocess_polygons(polygons);
             auto end = std::chrono::high_resolution_clock::now();
-            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
+            std::cout << "Preprocess: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms, "
+                << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() <<  " ns" << std::endl;
         }
         run_pressed = true;
         return;
     }
-    if (run_type == "triangulated")
+    if (used_algorithm == "triangulated")
     {
         if (run_pressed && g_triangulation_button->mouse_clicked_inside(x, y))
         {
@@ -331,7 +371,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             show_graph = !show_graph;
             return;
         }
-        if (run_pressed && path_algorithm && g_visibility_button->mouse_clicked_inside(x, y))
+        if (run_pressed && path_algorithm && run_type == "full" && g_visibility_button->mouse_clicked_inside(x, y))
         {
             if (!rob.can_render())
             {
@@ -341,7 +381,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             }
             return;
         }
-        if (run_pressed && !path_algorithm && g_path_button->mouse_clicked_inside(x, y))
+        if (run_pressed && !path_algorithm && run_type == "full" && g_path_button->mouse_clicked_inside(x, y))
         {
             path_algorithm = !path_algorithm;
             vertices_visi.clear();
@@ -349,22 +389,64 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         }
     }
 
+    if (run_pressed && run_type == "step" && display_data_steps.size())
+    {
+        if (g_next_button->mouse_clicked_inside(x, y))
+        {
+            next_step();
+            return;
+        }
+        if (g_prev_button->mouse_clicked_inside(x, y))
+        {
+            prev_step();
+            return;
+        }
+    }
+
     if (visi_enabled && !path_algorithm)
     {
         vertices_visi.clear();
+        vertices_points_step.clear();
+        vertices_triangles_step.clear();
+        step = -1;
         try
         {
             std::vector<triangle*> tris;
             auto begin = std::chrono::high_resolution_clock::now();
-            if (run_type == "simple")
+            if (used_algorithm == "simple")
+            {
                 tris = simple_polygon_visibility::get_instance().get_visibility({x, y});
-            else if (run_type == "triangulated")// triangulated
+                if (run_type == "step")
+                {   
+                    display_data_steps = simple_polygon_visibility::get_instance().get_display_data_steps();
+                    next_step();
+                    tris.clear();
+                }
+            }
+            else if (used_algorithm == "triangulated")// triangulated
+            {
                 tris = triangulated_polygon_visibility::get_instance().get_visibility({x, y});
-            else 
+                if (run_type == "step")
+                {
+                    display_data_steps = triangulated_polygon_visibility::get_instance().get_display_data_steps();
+                    next_step();
+                    tris.clear();
+                }
+            }
+            else
+            {
                 tris = intersect_visibility::get_instance().get_visibility({x ,y});
+                if (run_type == "step")
+                {
+                    display_data_steps = intersect_visibility::get_instance().get_display_data_steps();
+                    next_step();
+                    tris.clear();
+                }
+            }
+        
             auto end = std::chrono::high_resolution_clock::now();
-            auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-            std::cout << "Visibility time: " << time << std::endl;
+            std::cout << "Visibility time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms, "
+                << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << " ns" << std::endl;
             auto pts = triangles_to_points(tris);
             vertices_visi = normalize_data(pts);
         }
@@ -375,7 +457,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
     }
     else if (visi_enabled && path_algorithm)
     {
-        if (run_type != "triangulated")
+        if (used_algorithm != "triangulated")
             return;
 
         if (rob.can_render()) // cannot click while the animation is on the screen
@@ -400,13 +482,10 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         }
         else 
             vertices_path = normalize_data(path_points);
-        /*for (int i = 0; i < path_points.size(); ++i)
-            std::cout << path_points[i].x << " " << path_points[i].y << " / ";
-        std::cout << std::endl;*/
     }
     else 
     {
-        if (run_type == "simple" && polygon_index > 0)
+        if (used_algorithm == "simple" && polygon_index > 0)
             return;
 
         if (polygons[polygon_index].size() > 0 &&
@@ -448,13 +527,29 @@ void create_buttons()
 
     g_close_polygon_button = new button("close.jpg",         {10.0, 60.0},  {110.0, 10.0});
     g_run_button           = new button("run.jpg",           {120.0, 60.0}, {220.0, 10.0});
-    if (run_type == "triangulated")
+    if (used_algorithm == "triangulated")
     {
         g_degenerate_button    = new button("degenerate.jpg",    {10.0, 60.0},  {110.0, 10.0});
         g_triangulation_button = new button("triangulation.jpg", {120.0, 60.0}, {220.0, 10.0});
         g_graph_button         = new button("graph.jpg",         {230.0, 60.0}, {330.0, 10.0});
-        g_path_button          = new button("path.jpg",          {340.0, 60.0}, {440.0, 10.0});
-        g_visibility_button    = new button("visibility.jpg",    {340.0, 60.0}, {440.0, 10.0});
+        if (run_type == "full")
+        {
+            g_path_button          = new button("path.jpg",          {340.0, 60.0}, {440.0, 10.0});
+            g_visibility_button    = new button("visibility.jpg",    {340.0, 60.0}, {440.0, 10.0});
+        }
+    }
+    if (run_type == "step")
+    {
+        if (used_algorithm == "triangulated")
+        {
+            g_next_button = new button("next.jpg", {340.0, 60.0}, {440.0, 10.0});
+            g_prev_button = new button("prev.jpg", {450.0, 60.0}, {550.0, 10.0});
+        }
+        else if (used_algorithm == "simple" || used_algorithm == "intersect")
+        {
+            g_next_button = new button("next.jpg", {10.0, 60.0}, {110.0, 10.0});
+            g_prev_button = new button("prev.jpg", {120.0, 60.0}, {220.0, 10.0});
+        }
     }
 }
 
@@ -462,13 +557,21 @@ void destry_buttons()
 {
     delete g_close_polygon_button;
     delete g_run_button;
-    if (run_type == "triangulated")
+    if (used_algorithm == "triangulated")
     {
         delete g_degenerate_button;
         delete g_triangulation_button;
         delete g_graph_button;
-        delete g_path_button;
-        delete g_visibility_button;
+        if (run_type == "full")
+        {
+            delete g_path_button;
+            delete g_visibility_button;
+        }
+    }
+    if (run_type == "step")
+    {
+        delete g_next_button;
+        delete g_prev_button;
     }
 }
 
@@ -480,7 +583,7 @@ int main(int argc, char * argv[])
         return 0;
     }
     
-    if (!parse_input_param(argv[1], polygons, run_type))
+    if (!parse_input_param(argv[1], polygons, used_algorithm, run_type))
     {
         std::cout << "Invalid config file!" << std::endl; 
         return 0;
@@ -554,7 +657,8 @@ int main(int argc, char * argv[])
     shader_program gray("../../../shaders/vertex_shaders/lines.vs", "../../../shaders/fragment_shaders/gray.fs");
     shader_program prog_roboto("../../../shaders/vertex_shaders/roboto.vs", "../../../shaders/fragment_shaders/lines.fs");
     shader_program prog_texture("../../../shaders/vertex_shaders/texture.vs", "../../../shaders/fragment_shaders/texture.fs");
-
+    shader_program prog_red("../../../shaders/vertex_shaders/lines.vs", "../../../shaders/fragment_shaders/red.fs");
+ 
     create_buttons();
 
     std::vector<float> vert_axes {
@@ -608,6 +712,15 @@ int main(int argc, char * argv[])
     vertex_buffer vb_rob;
     va_rob.add_buffer(vb_rob, layout);
 
+
+    vertex_array va_step_points;
+    vertex_buffer vb_step_points;
+    va_step_points.add_buffer(vb_step_points, layout);
+
+    vertex_array va_step_triangles;
+    vertex_buffer vb_step_triangles;
+    va_step_triangles.add_buffer(vb_step_triangles, layout);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -645,6 +758,15 @@ int main(int argc, char * argv[])
             vb_visi.bind();
             vb_visi.buffer_data(vertices_visi.data(), sizeof(float) * vertices_visi.size());
             glDrawArrays(GL_TRIANGLES, 0, vertices_visi.size() / 2);
+        }
+
+        if (vertices_triangles_step.size() > 5)
+        {
+            yellow.use();
+            va_step_triangles.bind();
+            vb_step_triangles.bind();
+            vb_step_triangles.buffer_data(vertices_triangles_step.data(), sizeof(float) * vertices_triangles_step.size());
+            glDrawArrays(GL_TRIANGLES, 0, vertices_triangles_step.size() / 2);
         }
 
         /* Draw xoy axes */
@@ -724,6 +846,15 @@ int main(int argc, char * argv[])
             vb_deg.buffer_data(degenerate_polygon.data(), sizeof(float) * degenerate_polygon.size());
             glDrawArrays(GL_LINES, 0, degenerate_polygon.size() / 2);
         }
+
+        if (vertices_points_step.size() > 1)
+        {
+            prog_red.use();
+            va_step_points.bind();
+            vb_step_points.bind();
+            vb_step_points.buffer_data(vertices_points_step.data(), sizeof(float) * vertices_points_step.size());
+            glDrawArrays(GL_POINTS, 0, vertices_points_step.size() / 2);
+        }
         
         prog_texture.use();
         if (!run_pressed)
@@ -731,16 +862,28 @@ int main(int argc, char * argv[])
             g_close_polygon_button->render();
             g_run_button->render();
         }
-        else if (run_type == "triangulated") 
+        else 
         {
-            g_degenerate_button->render();
-            g_triangulation_button->render();
-            g_graph_button->render();
+            if (run_type == "step" && display_data_steps.size())
+            {
+                g_next_button->render();
+                g_prev_button->render();
+            }
 
-            if (!path_algorithm)
-                g_path_button->render();
-            else
-                g_visibility_button->render();
+            if (used_algorithm == "triangulated")
+            {
+                g_degenerate_button->render();
+                g_triangulation_button->render();
+                g_graph_button->render();
+
+                if (run_type == "full")
+                {
+                    if (!path_algorithm)
+                        g_path_button->render();
+                    else
+                        g_visibility_button->render();
+                }
+            }
         }
         
         

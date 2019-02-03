@@ -194,6 +194,7 @@
     <None Include="..\..\shaders\fragment_shaders\blue.fs" />
     <None Include="..\..\shaders\fragment_shaders\gray.fs" />
     <None Include="..\..\shaders\fragment_shaders\lines.fs" />
+    <None Include="..\..\shaders\fragment_shaders\red.fs" />
     <None Include="..\..\shaders\fragment_shaders\texture.fs" />
     <None Include="..\..\shaders\fragment_shaders\yellow.fs" />
     <None Include="..\..\shaders\vertex_shaders\lines.vs" />

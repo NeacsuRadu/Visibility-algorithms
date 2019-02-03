@@ -180,13 +180,13 @@ inline bool point_between_segment_vertices(const point& p, const point& s1, cons
 inline line_equation get_line_equation(const point& p, const point& q)
 {
     if (p == q)
-        throw std::runtime_error("line equation called with two equal point");
+        throw std::runtime_error("line equation called with two equal points");
 
     if (p.x == q.x)
         return {1, 0, -p.x};
     if (p.y == q.y)
         return {0, 1, -p.y};
-    return {p.y - q.y, q.x - p.x, p.x * q.y - q.x * p.y};
+    return {/*a = */p.y - q.y, /*b = */ q.x - p.x, /* c = */ p.x * q.y - q.x * p.y};
 }
 
 inline point get_lines_intersection(const line_equation& l1, const line_equation& l2)

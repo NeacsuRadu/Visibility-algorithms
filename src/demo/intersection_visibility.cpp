@@ -56,6 +56,7 @@ std::vector<triangle*> intersect_visibility::get_visibility(const point& view)
 
         pt.x += view.x;
         pt.y += view.y;
+        _save_data(view, visible_points, {view, pt});
         auto visible_point = _get_visible_point(visible_points, view, pt, true);
 
         auto post_ang = ang + 0.00001;
@@ -74,7 +75,7 @@ std::vector<triangle*> intersect_visibility::get_visibility(const point& view)
     for (std::size_t i = 0; i < visible_points.size() - 1; ++ i)
         res.push_back(get_triangle(view, visible_points[i], visible_points[i + 1]));
     res.push_back(get_triangle(view, visible_points[visible_points.size() - 1], visible_points[0]));
-    //_save_data(res, {});
+    _save_data(res, {});
 
     return res;
 }
@@ -91,12 +92,14 @@ point intersect_visibility::_get_visible_point(const std::vector<point>& visi, c
             if (inte == error_point)
                 continue;
 
-            if (save)
-                _save_data(view, visi, {view, intersection, m_polygons[i][j], m_polygons[i][j + 1], inte});
+            if (save && inte != m_polygons[i][j] && inte != m_polygons[i][j + 1])
+                _save_data(view, visi, {view, intersection, m_polygons[i][j], m_polygons[i][j + 1]});
             auto d = distance(view, inte);
             if (d < dist)
             {
                 dist = d;
+                if (save)
+                    _save_data(view, visi, {view, intersection, m_polygons[i][j], m_polygons[i][j+1], inte});
                 intersection = inte;
                 if (save)
                     _save_data(view, visi, {view, intersection, m_polygons[i][j], m_polygons[i][j + 1]});
@@ -106,12 +109,14 @@ point intersect_visibility::_get_visible_point(const std::vector<point>& visi, c
         auto inte = get_segments_intersection(view, pt, m_polygons[i][m_polygons[i].size() - 1], m_polygons[i][0]);
         if (inte != error_point)
         {
-            if (save)
-                _save_data(view, visi, {view, intersection, m_polygons[i][m_polygons[i].size() - 1], m_polygons[i][0], inte});
+            if (save && inte != m_polygons[i][0] && inte != m_polygons[i][m_polygons[i].size() - 1])
+                _save_data(view, visi, {view, intersection, m_polygons[i][m_polygons[i].size() - 1], m_polygons[i][0]});
             auto d = distance(view, inte);
             if (d < dist)
             {
                 dist = d;
+                if (save)
+                    _save_data(view, visi, {view, intersection, m_polygons[i][m_polygons[i].size() - 1], m_polygons[i][0], inte});
                 intersection = inte;
                 if (save)
                     _save_data(view, visi, {view, intersection, m_polygons[i][m_polygons[i].size() - 1], m_polygons[i][0]});

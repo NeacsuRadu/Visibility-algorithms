@@ -1,6 +1,6 @@
 {
 	"used_algorithm": "triangulated",
-	"run_type": "full",
+	"run_type": "step",
     "polygon":[],
 	"holes":[]
 }

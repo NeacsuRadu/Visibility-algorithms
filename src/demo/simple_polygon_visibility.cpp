@@ -72,10 +72,19 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
     int sz = m_polygon.size();
     std::stack<stack_data> st;
     auto v0 = get_lines_intersection(view, {1000.0, view.y}, m_polygon[sz - 1], m_polygon[0]);
-    st.push({v0, false, index(-1, sz)});
+    if (v0 == m_polygon[0])
+    {
+        st.push({v0, true, index(0, sz)});
+        idx = 1;
+    }
+    else 
+    {
+        st.push({v0, false, index(-1, sz)});
+    }
     _save_stack({v0}, view, st);
     while (idx < sz)
     {
+        //std::cout << m_polygon[index(idx, sz)].x << " " << m_polygon[index(idx, sz)].y << std::endl;
         if (test_orientation(view, m_polygon[index(idx - 1, sz)], m_polygon[index(idx, sz)]) != orientation::right)
         {
             //std::cout << "vertex is to the left of the previous one, push" << std::endl;
@@ -125,7 +134,7 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
                     auto ori = test_orientation(view, m_polygon[index(idx, sz)], m_polygon[index(idx + 1, sz)]);
                     if (ori == orientation::right)
                     {
-                       // std::cout << "idx + 1 is to the right of q idx " << std::endl;
+                        //std::cout << "idx + 1 is to the right of q idx " << std::endl;
                         f1 = f2;
                         f2 = m_polygon[index(idx + 1, sz)];
                         idx ++;
@@ -135,7 +144,7 @@ std::stack<simple_polygon_visibility::stack_data> simple_polygon_visibility::_ge
                     {
                         if (test_orientation(f1, f2, m_polygon[index(idx + 1, sz)]) == orientation::right)
                         {
-                           // std::cout << "idx + 1 is to the right of idx - 1 idx " << std::endl;
+                            //std::cout << "idx + 1 is to the right of idx - 1 idx " << std::endl;
                             auto m = get_lines_intersection(view, f2, data.pt, m_polygon[index(data.index + 1, sz)]);
                             if (m == error_point)
                                 throw std::runtime_error("lines do not intersect, error");

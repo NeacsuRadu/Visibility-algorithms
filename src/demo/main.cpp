@@ -50,6 +50,8 @@ bool last_v_state = false;
 bool last_p_state = false;
 bool last_d_state = false;
 
+visibility_algorithm * algorithm = nullptr;
+
 roboto rob;
 
 std::vector<float>        vertices;
@@ -101,6 +103,10 @@ bool can_add_edge(const point& p1, const point& p2)
 {
     // testam daca p2 poate fi legat la ultimul poligon construit
     // p1 face deja parte din poligon
+    for (std::size_t idx = 0; idx < polygons[polygons.size() - 1].size(); ++ idx)
+        if (p2 == polygons[polygons.size() - 1][idx])
+            return false;
+
     for (std::size_t idx_p = 0; idx_p < polygons.size(); ++ idx_p)
     {
         auto sz = polygons[idx_p].size();
@@ -338,10 +344,12 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             auto deg_v = compute_render_polygon(deg_p);
             degenerate_polygon = normalize_data(deg_v);
 
-            g_visi_graph = get_visibility_graph(polygons);
-            //std::cout << "Get visibility graph" << std::endl;
-            auto verts = g_visi_graph->get_vertices();
-            vertices_graph = normalize_data(verts);
+            if (run_type != "step")
+            {
+                g_visi_graph = get_visibility_graph(polygons);
+                auto verts = g_visi_graph->get_vertices();
+                vertices_graph = normalize_data(verts);
+            }
         }
         else
         {
@@ -366,7 +374,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             show_degenerate_polygon = !show_degenerate_polygon;
             return;
         }
-        if (run_pressed && g_graph_button->mouse_clicked_inside(x ,y))
+        if (run_pressed && run_type == "full" && g_graph_button->mouse_clicked_inside(x ,y))
         {
             show_graph = !show_graph;
             return;
@@ -447,6 +455,7 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
             auto end = std::chrono::high_resolution_clock::now();
             std::cout << "Visibility time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms, "
                 << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << " ns" << std::endl;
+            std::cout << "pt: " << x << " " << y << std::endl;
             auto pts = triangles_to_points(tris);
             vertices_visi = normalize_data(pts);
         }
@@ -488,9 +497,13 @@ void mouse_button_callback(GLFWwindow * window, int button, int action, int mods
         if (used_algorithm == "simple" && polygon_index > 0)
             return;
 
+        std::cout << "pt: " << x << " " << y << std::endl;
+
         if (polygons[polygon_index].size() > 0 &&
             !can_add_edge(polygons[polygon_index][polygons[polygon_index].size() - 1], {x, y}))
             return;
+
+        std::cout << "edge can be added" << std::endl;
 
         point pt = {x, y};
         polygons[polygon_index].push_back(pt);
@@ -531,9 +544,9 @@ void create_buttons()
     {
         g_degenerate_button    = new button("degenerate.jpg",    {10.0, 60.0},  {110.0, 10.0});
         g_triangulation_button = new button("triangulation.jpg", {120.0, 60.0}, {220.0, 10.0});
-        g_graph_button         = new button("graph.jpg",         {230.0, 60.0}, {330.0, 10.0});
         if (run_type == "full")
         {
+            g_graph_button         = new button("graph.jpg",         {230.0, 60.0}, {330.0, 10.0});
             g_path_button          = new button("path.jpg",          {340.0, 60.0}, {440.0, 10.0});
             g_visibility_button    = new button("visibility.jpg",    {340.0, 60.0}, {440.0, 10.0});
         }
@@ -542,8 +555,8 @@ void create_buttons()
     {
         if (used_algorithm == "triangulated")
         {
-            g_next_button = new button("next.jpg", {340.0, 60.0}, {440.0, 10.0});
-            g_prev_button = new button("prev.jpg", {450.0, 60.0}, {550.0, 10.0});
+            g_next_button = new button("next.jpg", {230.0, 60.0}, {330.0, 10.0});
+            g_prev_button = new button("prev.jpg", {340.0, 60.0}, {440.0, 10.0});
         }
         else if (used_algorithm == "simple" || used_algorithm == "intersect")
         {
@@ -561,9 +574,9 @@ void destry_buttons()
     {
         delete g_degenerate_button;
         delete g_triangulation_button;
-        delete g_graph_button;
         if (run_type == "full")
         {
+            delete g_graph_button;
             delete g_path_button;
             delete g_visibility_button;
         }
@@ -874,10 +887,10 @@ int main(int argc, char * argv[])
             {
                 g_degenerate_button->render();
                 g_triangulation_button->render();
-                g_graph_button->render();
 
                 if (run_type == "full")
                 {
+                    g_graph_button->render();
                     if (!path_algorithm)
                         g_path_button->render();
                     else
